@@ -4,18 +4,18 @@
 :root {
   --background: #0a0a0f;
   --foreground: #e4e4e7;
-  --primary: #f97316;
+  --primary: #f26383;
   --primary-foreground: #ffffff;
-  --secondary: #3b0764;
-  --secondary-foreground: #e9d5ff;
+  --secondary: #008efa;
+  --secondary-foreground: #b0dcff;
   --muted: #27272a;
   --muted-foreground: #a1a1aa;
   --border: #3f3f46;
-  --ring: #f97316;
-  --accent: #1e1b4b;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --warning: #eab308;
+  --ring: var(--primary);
+  --accent: #f26383;
+  --danger: #e55d5d;
+  --success: #57bd7c;
+  --warning: #ff954f;
 }
 
 @theme inline {
