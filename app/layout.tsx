@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { QueryProvider } from "@/app/lib/query-provider";
+import { Toast } from "@heroui/react";
 import { AuthProvider } from "@/app/context/AuthContext";
 import { Navbar } from "@/app/components/Navbar";
 import "./globals.css";
@@ -37,6 +38,7 @@ export default function RootLayout({
           <AuthProvider>
             <Navbar />
             <main className="flex-1">{children}</main>
+            <Toast.Provider placement="bottom end" />
           </AuthProvider>
         </QueryProvider>
       </body>

@@ -15,6 +15,7 @@ import {
   BeatmapsDocument,
   AnnouncementsDocument,
 } from "@/app/lib/operations";
+import { toast } from "@heroui/react";
 import type {
   MeQuery,
   UsersQuery,
@@ -51,6 +52,26 @@ function unwrap<T>(res: { data?: T; errors?: Array<{ message: string }> }): T {
 function throwOnRestError<T>(res: RestResponse<T>): T {
   if (!res.success) throw new Error(res.error ?? "Request failed");
   return res.data as T;
+}
+
+
+/**
+ * Mutation wrapper that shows a toast notification on error.
+ * Success toasts are intentionally left to callers.
+ */
+function useToastedMutation<TData, TError = Error, TVariables = unknown, TContext = unknown>(
+  options: UseMutationOptions<TData, TError, TVariables, TContext>,
+) {
+  const opts: UseMutationOptions<TData, TError, TVariables, TContext> = {
+    ...options,
+    onError: (error, variables, onMutateResult, context) => {
+      if (error instanceof Error) {
+        toast.danger(error.message);
+      }
+      options.onError?.(error, variables, onMutateResult, context);
+    },
+  };
+  return useMutation(opts);
 }
 
 // =========================================================================
@@ -105,7 +126,7 @@ export function useUsers(enabled = true) {
 
 export function useUpdateUserRoles() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: ({ id, roles }: { id: string; roles: string[] }) =>
       restFetch(`/users/${id}/roles`, {
         method: "PATCH",
@@ -117,7 +138,7 @@ export function useUpdateUserRoles() {
 
 export function useSetUserBanned() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: ({ id, isBanned }: { id: string; isBanned: boolean }) =>
       restFetch(`/users/${id}/banned`, {
         method: "PATCH",
@@ -129,7 +150,7 @@ export function useSetUserBanned() {
 
 export function useUpdateVerifyStatus() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: ({ id, verifyStatus }: { id: string; verifyStatus: string }) =>
       restFetch(`/users/${id}/verify-status`, {
         method: "PATCH",
@@ -158,7 +179,7 @@ export function useBeatmaps(enabled = true) {
 
 export function useCreateBeatmap() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: (body: Record<string, unknown>) =>
       restFetch("/beatmaps", { method: "POST", body: JSON.stringify(body) }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
@@ -167,7 +188,7 @@ export function useCreateBeatmap() {
 
 export function useUpdateBeatmap() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
       restFetch(`/beatmaps/${id}`, { method: "PUT", body: JSON.stringify(body) }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
@@ -176,7 +197,7 @@ export function useUpdateBeatmap() {
 
 export function useDeleteBeatmap() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: (id: string) =>
       restFetch(`/beatmaps/${id}`, { method: "DELETE" }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
@@ -202,7 +223,7 @@ export function useAnnouncements(enabled = true) {
 
 export function useCreateAnnouncement() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: (body: Record<string, unknown>) =>
       restFetch("/announcements", { method: "POST", body: JSON.stringify(body) }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
@@ -211,7 +232,7 @@ export function useCreateAnnouncement() {
 
 export function useUpdateAnnouncement() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
       restFetch(`/announcements/${id}`, { method: "PUT", body: JSON.stringify(body) }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
@@ -220,7 +241,7 @@ export function useUpdateAnnouncement() {
 
 export function useDeleteAnnouncement() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: (id: string) =>
       restFetch(`/announcements/${id}`, { method: "DELETE" }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
@@ -229,7 +250,7 @@ export function useDeleteAnnouncement() {
 
 export function usePublishAnnouncement() {
   const qc = useQueryClient();
-  return useMutation({
+  return useToastedMutation({
     mutationFn: (id: string) =>
       restFetch(`/announcements/${id}/publish`, { method: "POST" }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
