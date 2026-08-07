@@ -210,7 +210,7 @@ REST shape (`GET` no longer exists; shown for mutation payloads):
 Notes:
 
 - `roles` can contain: `player`, `strategist`, `referee`, `streamer`, `admin`.
-- `verifyStatus` can be: `verified`, `pending`, `unverified`.
+- `status` can be: `verified`, `pending`, `unverified`.
 - On first osu! login, users are created with `player` role and `pending` status.
 
 ### Beatmap

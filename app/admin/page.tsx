@@ -17,6 +17,11 @@ import {
   ListBox,
   Spinner,
   Avatar,
+  CheckboxGroup,
+  Checkbox,
+  Surface,
+  AlertDialog,
+  Switch,
 } from "@heroui/react";
 import {
   Shield,
@@ -56,11 +61,18 @@ const STATUS_OPTIONS = ["ranked", "loved", "qualified", "graveyard"];
 
 // ---- helpers ----
 function chipColor(role: string) {
-  return role === "ADMIN"
-    ? ("danger" as const)
-    : role === "REFEREE"
-      ? ("warning" as const)
-      : ("accent" as const);
+  switch (role) {
+    case "ADMIN":
+      return "danger" as const;
+    case "REFEREE":
+      return "warning" as const;
+    case "STRATEGIST":
+      return "accent" as const;
+    case "STREAMER":
+      return "success" as const;
+    default:
+      return "default" as const;
+  }
 }
 
 function verifyColor(s: string) {
@@ -119,6 +131,8 @@ export default function AdminPage() {
   // ---- UI state ----
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [editRoles, setEditRoles] = useState<string[]>([]);
+  const [editVerifyStatus, setEditVerifyStatus] = useState<string>("");
+  const [banningUserId, setBanningUserId] = useState<string | null>(null);
 
   const [bmModal, setBmModal] = useState(false);
   const [bmEditId, setBmEditId] = useState<string | null>(null);
@@ -128,29 +142,64 @@ export default function AdminPage() {
   const [annEditId, setAnnEditId] = useState<string | null>(null);
   const [annF, setAnnF] = useState(blankAnn);
 
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { type: "beatmap"; id: string; title: string }
+    | { type: "announcement"; id: string; title: string }
+    | null
+  >(null);
+
   // ---- helper ----
   const userById = (id: string) => users.find((u) => u.id === id);
 
   // ---- User modal ----
   const openUserEdit = (id: string) => {
+    const target = userById(id);
     setEditUserId(id);
-    setEditRoles([...(userById(id)?.roles ?? [])]);
+    setEditRoles([...(target?.roles ?? [])]);
+    setEditVerifyStatus(target?.verifyStatus ?? "");
   };
 
   const saveUser = () => {
     if (!editUserId) return;
-    updateRoles.mutate(
-      {id: editUserId, roles: editRoles},
-      {onSuccess: () => setEditUserId(null)},
-    );
+    const target = userById(editUserId);
+    if (!target) return;
+
+    const rolesChanged =
+      editRoles.length !== target.roles.length ||
+      !editRoles.every((r) => target.roles.some((tr) => tr === r));
+    const verifyChanged = editVerifyStatus !== target.verifyStatus;
+
+    const close = () => setEditUserId(null);
+
+    if (rolesChanged && verifyChanged) {
+      updateRoles.mutate(
+        {id: editUserId, roles: editRoles},
+        {
+          onSuccess: () =>
+            setVerify.mutate(
+              {id: editUserId, verifyStatus: editVerifyStatus},
+              {onSuccess: close},
+            ),
+        },
+      );
+    } else if (rolesChanged) {
+      updateRoles.mutate({id: editUserId, roles: editRoles}, {onSuccess: close});
+    } else if (verifyChanged) {
+      setVerify.mutate(
+        {id: editUserId, verifyStatus: editVerifyStatus},
+        {onSuccess: close},
+      );
+    } else {
+      close();
+    }
   };
 
   const toggleBan = (u: UserItem) => {
-    setBanned.mutate({id: u.id, isBanned: !u.isBanned});
-  };
-
-  const changeVerify = (u: UserItem, status: string) => {
-    setVerify.mutate({id: u.id, verifyStatus: status});
+    setBanningUserId(u.id);
+    setBanned.mutate(
+      {id: u.id, isBanned: !u.isBanned},
+      {onSettled: () => setBanningUserId(null)},
+    );
   };
 
   // ---- Beatmap modal ----
@@ -185,9 +234,8 @@ export default function AdminPage() {
     }
   };
 
-  const removeBm = (id: string) => {
-    if (!confirm("Delete this beatmap?")) return;
-    deleteBm.mutate(id);
+  const removeBm = (b: BeatmapItem) => {
+    setDeleteTarget({ type: "beatmap", id: b.id, title: `${b.title} — ${b.artist}` });
   };
 
   // ---- Announcement modal ----
@@ -214,12 +262,20 @@ export default function AdminPage() {
     }
   };
 
-  const removeAnn = (id: string) => {
-    if (!confirm("Delete this announcement?")) return;
-    deleteAnn.mutate(id);
+  const removeAnn = (a: AnnouncementItem) => {
+    setDeleteTarget({ type: "announcement", id: a.id, title: a.title });
   };
 
   const pubAnn = (id: string) => publishAnn.mutate(id);
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === "beatmap") {
+      deleteBm.mutate(deleteTarget.id, {onSuccess: () => setDeleteTarget(null)});
+    } else {
+      deleteAnn.mutate(deleteTarget.id, {onSuccess: () => setDeleteTarget(null)});
+    }
+  };
 
   // ---- Loading / access denied ----
   if (!user)
@@ -367,7 +423,7 @@ export default function AdminPage() {
                               size="sm"
                               variant={u.isBanned ? "secondary" : "danger"}
                               onPress={() => toggleBan(u)}
-                              isDisabled={setBanned.isPending}
+                              isDisabled={banningUserId === u.id}
                             >
                               {u.isBanned ? "Unban" : "Ban"}
                             </Button>
@@ -449,7 +505,7 @@ export default function AdminPage() {
                               size="sm"
                               variant="ghost"
                               isIconOnly
-                              onPress={() => removeBm(b.id)}
+                              onPress={() => removeBm(b)}
                             >
                               <Trash2 className="w-4 h-4"/>
                             </Button>
@@ -536,7 +592,7 @@ export default function AdminPage() {
                               size="sm"
                               variant="ghost"
                               isIconOnly
-                              onPress={() => removeAnn(a.id)}
+                              onPress={() => removeAnn(a)}
                             >
                               <Trash2 className="w-4 h-4"/>
                             </Button>
@@ -563,47 +619,38 @@ export default function AdminPage() {
           <Modal.Container>
             <Modal.Dialog>
               <Modal.Header>
+                <Modal.Icon className="bg-default text-foreground">
+                  <Pencil className="size-5"/>
+                </Modal.Icon>
                 <Modal.Heading>
                   Edit User: {userById(editUserId ?? "")?.username}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
                 <div className="flex flex-col gap-4">
-                  <div>
-                    <Label>Roles</Label>
-                    <Description>Select roles for this user.</Description>
-                    <div className="flex flex-wrap gap-2 mt-2">
+                  <Surface className="flex flex-col gap-1 rounded-2xl p-4" variant="secondary">
+                    <CheckboxGroup
+                      value={editRoles}
+                      onChange={(v) => setEditRoles(v as string[])}
+                    >
+                      <Label>Roles</Label>
+                      <Description>Select roles for this user.</Description>
                       {ROLE_OPTIONS.map((role) => (
-                        <Chip
-                          key={role}
-                          variant={
-                            editRoles.includes(role) ? "primary" : "secondary"
-                          }
-                          color={
-                            editRoles.includes(role)
-                              ? chipColor(role)
-                              : "default"
-                          }
-                          className="cursor-pointer"
-                          onClick={() =>
-                            setEditRoles((p) =>
-                              p.includes(role)
-                                ? p.filter((r) => r !== role)
-                                : [...p, role],
-                            )
-                          }
-                        >
-                          {role}
-                        </Chip>
+                        <Checkbox key={role} value={role}>
+                          <Checkbox.Content>
+                            <Checkbox.Control>
+                              <Checkbox.Indicator/>
+                            </Checkbox.Control>
+                            {role}
+                          </Checkbox.Content>
+                        </Checkbox>
                       ))}
-                    </div>
-                  </div>
+                    </CheckboxGroup>
+                  </Surface>
                   {editUserId && userById(editUserId) && (
                     <Select
-                      value={userById(editUserId)!.verifyStatus}
-                      onChange={(v) =>
-                        changeVerify(userById(editUserId)!, v as string)
-                      }
+                      selectedKey={editVerifyStatus}
+                      onSelectionChange={(v) => setEditVerifyStatus(v as string)}
                     >
                       <Label>Verify Status</Label>
                       <Select.Trigger>
@@ -629,7 +676,7 @@ export default function AdminPage() {
                 <Button
                   variant="primary"
                   onPress={saveUser}
-                  isDisabled={updateRoles.isPending}
+                  isDisabled={updateRoles.isPending || setVerify.isPending}
                 >
                   Save
                 </Button>
@@ -723,8 +770,8 @@ export default function AdminPage() {
                     />
                   </TextField>
                   <Select
-                    value={bmF.modString}
-                    onChange={(v) =>
+                    selectedKey={bmF.modString}
+                    onSelectionChange={(v) =>
                       setBmF((p) => ({...p, modString: v as string}))
                     }
                   >
@@ -743,8 +790,8 @@ export default function AdminPage() {
                     </Select.Popover>
                   </Select>
                   <Select
-                    value={bmF.status}
-                    onChange={(v) =>
+                    selectedKey={bmF.status}
+                    onSelectionChange={(v) =>
                       setBmF((p) => ({...p, status: v as string}))
                     }
                   >
@@ -789,7 +836,7 @@ export default function AdminPage() {
         }}
       >
         <Modal.Backdrop>
-          <Modal.Container>
+          <Modal.Container size="lg">
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
@@ -823,16 +870,17 @@ export default function AdminPage() {
                       }
                     />
                   </TextField>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={annF.pinned}
-                      onChange={(e) =>
-                        setAnnF((p) => ({...p, pinned: e.target.checked}))
-                      }
-                    />
-                    <Label>Pinned to top</Label>
-                  </label>
+                  <Switch
+                    isSelected={annF.pinned}
+                    onChange={(v) => setAnnF((p) => ({...p, pinned: v}))}
+                  >
+                    <Switch.Content>
+                      Pinned to top
+                      <Switch.Control>
+                        <Switch.Thumb/>
+                      </Switch.Control>
+                    </Switch.Content>
+                  </Switch>
                 </div>
               </Modal.Body>
               <Modal.Footer>
@@ -851,6 +899,49 @@ export default function AdminPage() {
           </Modal.Container>
         </Modal.Backdrop>
       </Modal>
+
+      {/* ============ DELETE CONFIRMATION ============ */}
+      <AlertDialog
+        isOpen={deleteTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialog.Backdrop>
+          <AlertDialog.Container>
+            <AlertDialog.Dialog>
+              <AlertDialog.Header>
+                <AlertDialog.Icon status="danger"/>
+                <AlertDialog.Heading>
+                  Delete {deleteTarget?.type === "beatmap" ? "Beatmap" : "Announcement"}
+                </AlertDialog.Heading>
+              </AlertDialog.Header>
+              <AlertDialog.Body>
+                <p>
+                  Are you sure you want to delete{" "}
+                  <span className="font-medium">{deleteTarget?.title}</span>?
+                  This action cannot be undone.
+                </p>
+              </AlertDialog.Body>
+              <AlertDialog.Footer>
+                <Button
+                  variant="ghost"
+                  onPress={() => setDeleteTarget(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onPress={confirmDelete}
+                  isDisabled={deleteBm.isPending || deleteAnn.isPending}
+                >
+                  Delete
+                </Button>
+              </AlertDialog.Footer>
+            </AlertDialog.Dialog>
+          </AlertDialog.Container>
+        </AlertDialog.Backdrop>
+      </AlertDialog>
     </div>
   );
 }

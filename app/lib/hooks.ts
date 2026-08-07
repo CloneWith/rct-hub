@@ -1,6 +1,13 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type QueryKey,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
 import {
   graphqlRequest,
   restFetch,
@@ -8,6 +15,7 @@ import {
   clearToken,
   getCachedUser,
   type RestResponse,
+  type GraphQLResponse,
 } from "./api";
 import {
   MeDocument,
@@ -22,6 +30,7 @@ import type {
   BeatmapsQuery,
   AnnouncementsQuery,
 } from "@/app/graphql/graphql";
+import type { UserRole, VerifyStatus } from "@/app/graphql/graphql";
 
 // =========================================================================
 // Types — derived from codegen-generated GraphQL types
@@ -54,6 +63,48 @@ function throwOnRestError<T>(res: RestResponse<T>): T {
   return res.data as T;
 }
 
+/**
+ * GraphQL query helper used by admin lists.
+ * - Returns the selected data even when GraphQL reports errors, so partial
+ *   results still render and the cache keeps the same shape as before.
+ * - Shows a toast for any error message while keeping the query in success state.
+ * - Throws only when no data is available at all.
+ */
+function useGraphQLData<T, R>(
+  queryKey: QueryKey,
+  fetch: () => Promise<GraphQLResponse<T>>,
+  select: (data: T) => R,
+  enabled: boolean,
+) {
+  const errorRef = useRef<string | null>(null);
+  const lastToasted = useRef<string | null>(null);
+
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const res = await fetch();
+      const error = res.errors?.[0]?.message ?? null;
+      errorRef.current = error;
+      if (res.data === undefined) {
+        throw new Error(error ?? "Request failed");
+      }
+      return select(res.data);
+    },
+    enabled,
+  });
+
+  useEffect(() => {
+    const error = errorRef.current;
+    if (error && error !== lastToasted.current) {
+      toast.danger(error);
+      lastToasted.current = error;
+    } else if (!error && lastToasted.current) {
+      lastToasted.current = null;
+    }
+  }, [query.dataUpdatedAt, query.errorUpdatedAt]);
+
+  return { data: query.data, isLoading: query.isLoading };
+}
 
 /**
  * Mutation wrapper that shows a toast notification on error.
@@ -112,16 +163,13 @@ export function useMe() {
 // =========================================================================
 
 export function useUsers(enabled = true) {
-  return useQuery({
-    queryKey: ["admin", "users"],
-    queryFn: async () => {
-      const data = unwrap(
-        await graphqlRequest(UsersDocument, { page: 1, perPage: 50 }),
-      );
-      return data.users.items;
-    },
+  const { data, isLoading } = useGraphQLData(
+    ["admin", "users"],
+    () => graphqlRequest(UsersDocument, { page: 1, perPage: 50 }),
+    (data) => data.users.items,
     enabled,
-  });
+  );
+  return { data: data ?? [], isLoading };
 }
 
 export function useUpdateUserRoles() {
@@ -132,7 +180,24 @@ export function useUpdateUserRoles() {
         method: "PATCH",
         body: JSON.stringify({ roles: roles.map((r) => r.toLowerCase()) }),
       }).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onMutate: async ({ id, roles }) => {
+      await qc.cancelQueries({ queryKey: ["admin", "users"] });
+      const prev = qc.getQueryData<UserItem[]>(["admin", "users"]);
+      if (prev) {
+        qc.setQueryData<UserItem[]>(["admin", "users"], (old) =>
+          old?.map((u) =>
+            u.id === id
+              ? { ...u, roles: roles as UserRole[] }
+              : u,
+          ),
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["admin", "users"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 }
 
@@ -142,9 +207,22 @@ export function useSetUserBanned() {
     mutationFn: ({ id, isBanned }: { id: string; isBanned: boolean }) =>
       restFetch(`/users/${id}/banned`, {
         method: "PATCH",
-        body: JSON.stringify({ isBanned }),
+        body: JSON.stringify({ banned: isBanned }),
       }).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onMutate: async ({ id, isBanned }) => {
+      await qc.cancelQueries({ queryKey: ["admin", "users"] });
+      const prev = qc.getQueryData<UserItem[]>(["admin", "users"]);
+      if (prev) {
+        qc.setQueryData<UserItem[]>(["admin", "users"], (old) =>
+          old?.map((u) => (u.id === id ? { ...u, isBanned } : u)),
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["admin", "users"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 }
 
@@ -154,9 +232,26 @@ export function useUpdateVerifyStatus() {
     mutationFn: ({ id, verifyStatus }: { id: string; verifyStatus: string }) =>
       restFetch(`/users/${id}/verify-status`, {
         method: "PATCH",
-        body: JSON.stringify({ verifyStatus: verifyStatus.toLowerCase() }),
+        body: JSON.stringify({ status: verifyStatus.toLowerCase() }),
       }).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onMutate: async ({ id, verifyStatus }) => {
+      await qc.cancelQueries({ queryKey: ["admin", "users"] });
+      const prev = qc.getQueryData<UserItem[]>(["admin", "users"]);
+      if (prev) {
+        qc.setQueryData<UserItem[]>(["admin", "users"], (old) =>
+          old?.map((u) =>
+            u.id === id
+              ? { ...u, verifyStatus: verifyStatus as VerifyStatus }
+              : u,
+          ),
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["admin", "users"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 }
 
@@ -165,16 +260,13 @@ export function useUpdateVerifyStatus() {
 // =========================================================================
 
 export function useBeatmaps(enabled = true) {
-  return useQuery({
-    queryKey: ["admin", "beatmaps"],
-    queryFn: async () => {
-      const data = unwrap(
-        await graphqlRequest(BeatmapsDocument, { page: 1, perPage: 50 }),
-      );
-      return data.beatmaps.items;
-    },
+  const { data, isLoading } = useGraphQLData(
+    ["admin", "beatmaps"],
+    () => graphqlRequest(BeatmapsDocument, { page: 1, perPage: 50 }),
+    (data) => data.beatmaps.items,
     enabled,
-  });
+  );
+  return { data: data ?? [], isLoading };
 }
 
 export function useCreateBeatmap() {
@@ -209,16 +301,13 @@ export function useDeleteBeatmap() {
 // =========================================================================
 
 export function useAnnouncements(enabled = true) {
-  return useQuery({
-    queryKey: ["announcements"],
-    queryFn: async () => {
-      const data = unwrap(
-        await graphqlRequest(AnnouncementsDocument, { page: 1, perPage: 50 }),
-      );
-      return data.announcements.items;
-    },
+  const { data, isLoading } = useGraphQLData(
+    ["announcements"],
+    () => graphqlRequest(AnnouncementsDocument, { page: 1, perPage: 50 }),
+    (data) => data.announcements.items,
     enabled,
-  });
+  );
+  return { data: data ?? [], isLoading };
 }
 
 export function useCreateAnnouncement() {
