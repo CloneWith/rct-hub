@@ -327,7 +327,7 @@ export default function AdminPage() {
                               <Chip
                                 key={r}
                                 size="sm"
-                                variant="secondary"
+                                variant="soft"
                                 color={chipColor(r)}
                               >
                                 {r}
@@ -338,7 +338,7 @@ export default function AdminPage() {
                         <Table.Cell>
                           <Chip
                             size="sm"
-                            variant="secondary"
+                            variant="soft"
                             color={verifyColor(u.verifyStatus)}
                           >
                             {u.verifyStatus}
@@ -347,7 +347,7 @@ export default function AdminPage() {
                         <Table.Cell>
                           <Chip
                             size="sm"
-                            variant="secondary"
+                            variant="soft"
                             color={u.isBanned ? "danger" : "success"}
                           >
                             {u.isBanned ? "Yes" : "No"}
@@ -417,19 +417,19 @@ export default function AdminPage() {
                           </div>
                         </Table.Cell>
                         <Table.Cell>
-                          <Chip size="sm" variant="secondary">
+                          <Chip size="sm" variant="soft">
                             {(b.difficultyRating ?? 0).toFixed(1)}★
                           </Chip>
                         </Table.Cell>
                         <Table.Cell>
-                          <Chip size="sm" variant="secondary" color="accent">
+                          <Chip size="sm" variant="soft" color="accent">
                             {b.modString}
                           </Chip>
                         </Table.Cell>
                         <Table.Cell>
                           <Chip
                             size="sm"
-                            variant="secondary"
+                            variant="soft"
                             color={b.status === "ranked" ? "success" : "default"}
                           >
                             {b.status}
@@ -498,7 +498,7 @@ export default function AdminPage() {
                         <Table.Cell>
                           <Chip
                             size="sm"
-                            variant="secondary"
+                            variant="soft"
                             color={a.pinned ? "warning" : "default"}
                           >
                             {a.pinned ? "Yes" : "No"}
@@ -507,7 +507,7 @@ export default function AdminPage() {
                         <Table.Cell>
                           <Chip
                             size="sm"
-                            variant="secondary"
+                            variant="soft"
                             color={a.publishedAt ? "success" : "default"}
                           >
                             {a.publishedAt ? "Yes" : "Draft"}
