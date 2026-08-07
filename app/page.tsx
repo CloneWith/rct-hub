@@ -17,25 +17,35 @@ import {
 import { getOsuLoginUrl } from "@/app/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import { useAnnouncements } from "@/app/lib/hooks";
+import ShapeGrid from "@/app/components/ShapeGrid";
 
 export default function Home() {
-  const { user } = useAuth();
-  const { data: announcements = [], isLoading: announcementsLoading } =
+  const {user} = useAuth();
+  const {data: announcements = [], isLoading: announcementsLoading} =
     useAnnouncements(true);
 
   return (
     <div className="min-h-screen">
       {/* ======== Hero ======== */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-background to-accent/20" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent" />
-        <div className="relative mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:py-40">
+        <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-background to-accent/20"/>
+        <div
+          className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent"/>
+        <div className="absolute inset-0">
+          <ShapeGrid
+            speed={0.5}
+            squareSize={40}
+            direction="diagonal"
+            borderColor="#e95f7e"
+            hoverFillColor="#222"
+            shape="square"
+            hoverTrailAmount={0}
+          />
+        </div>
+        <div className="relative mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:py-40 bg-transparent">
           <div className="max-w-3xl">
-            <Chip variant="secondary" color="warning" size="sm" className="mb-6">
-              Powered by osu! OAuth
-            </Chip>
             <h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-              <span className="bg-linear-to-r from-primary via-orange-400 to-pink-500 bg-clip-text text-transparent">
+              <span className="font-mono bg-linear-to-r from-primary to-pink-500 bg-clip-text text-transparent">
                 RCT Hub
               </span>
             </h1>
@@ -48,7 +58,7 @@ export default function Home() {
               {!user && (
                 <a href={getOsuLoginUrl()}>
                   <Button variant="primary" size="lg" className="gap-2 text-base">
-                    <LogIn className="w-5 h-5" />
+                    <LogIn className="w-5 h-5"/>
                     Login with osu!
                   </Button>
                 </a>
@@ -56,7 +66,7 @@ export default function Home() {
               <Link href="/rooms">
                 <Button variant="outline" size="lg" className="gap-2 text-base">
                   Browse Rooms
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4"/>
                 </Button>
               </Link>
             </div>
@@ -80,7 +90,7 @@ export default function Home() {
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="p-6 border border-border bg-muted/30 hover:border-primary/30 transition-colors">
               <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
-                <Users className="w-5 h-5 text-primary" />
+                <Users className="w-5 h-5 text-primary"/>
               </div>
               <h3 className="font-semibold text-lg mb-2">Room Setup</h3>
               <p className="text-sm text-muted-foreground">
@@ -91,7 +101,7 @@ export default function Home() {
 
             <Card className="p-6 border border-border bg-muted/30 hover:border-primary/30 transition-colors">
               <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center mb-4">
-                <Swords className="w-5 h-5 text-green-400" />
+                <Swords className="w-5 h-5 text-green-400"/>
               </div>
               <h3 className="font-semibold text-lg mb-2">Match Engine</h3>
               <p className="text-sm text-muted-foreground">
@@ -102,7 +112,7 @@ export default function Home() {
 
             <Card className="p-6 border border-border bg-muted/30 hover:border-primary/30 transition-colors">
               <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mb-4">
-                <Grid3X3 className="w-5 h-5 text-purple-400" />
+                <Grid3X3 className="w-5 h-5 text-purple-400"/>
               </div>
               <h3 className="font-semibold text-lg mb-2">Mappool &amp; Board</h3>
               <p className="text-sm text-muted-foreground">
@@ -113,7 +123,7 @@ export default function Home() {
 
             <Card className="p-6 border border-border bg-muted/30 hover:border-primary/30 transition-colors">
               <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center mb-4">
-                <Shield className="w-5 h-5 text-amber-400" />
+                <Shield className="w-5 h-5 text-amber-400"/>
               </div>
               <h3 className="font-semibold text-lg mb-2">Role System</h3>
               <p className="text-sm text-muted-foreground">
@@ -157,10 +167,10 @@ export default function Home() {
                 desc: "Winner, scores, won-piece counts, and alignment info are recorded. Full move history for replay.",
                 icon: Trophy,
               },
-            ].map(({ step, title, desc, icon: Icon }) => (
+            ].map(({step, title, desc, icon: Icon}) => (
               <div key={step} className="text-center p-6">
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                  <Icon className="w-6 h-6 text-primary" />
+                  <Icon className="w-6 h-6 text-primary"/>
                 </div>
                 <div className="text-xs font-bold text-primary mb-1">
                   STEP {step}
@@ -196,12 +206,12 @@ export default function Home() {
                 value: "11",
                 desc: "Pick, Ban, Claim, Rob, Win, Dead, Surrender & more",
               },
-            ].map(({ icon: Icon, label, value, desc }) => (
+            ].map(({icon: Icon, label, value, desc}) => (
               <div
                 key={label}
                 className="text-center p-8 rounded-xl border border-border"
               >
-                <Icon className="w-8 h-8 text-primary mx-auto mb-4" />
+                <Icon className="w-8 h-8 text-primary mx-auto mb-4"/>
                 <div className="text-3xl font-bold mb-2">{value}</div>
                 <div className="font-medium mb-1">{label}</div>
                 <div className="text-sm text-muted-foreground">{desc}</div>
@@ -226,7 +236,7 @@ export default function Home() {
             <Link href="/announcements">
               <Button variant="ghost" className="gap-2">
                 View all
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4"/>
               </Button>
             </Link>
           </div>
@@ -234,7 +244,7 @@ export default function Home() {
           {announcementsLoading ? (
             <div className="grid gap-6 sm:grid-cols-3">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-40 rounded-xl" />
+                <Skeleton key={i} className="h-40 rounded-xl"/>
               ))}
             </div>
           ) : announcements.length > 0 ? (
@@ -246,7 +256,7 @@ export default function Home() {
                 >
                   <div className="flex items-start gap-2 mb-3">
                     {a.pinned && (
-                      <Megaphone className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <Megaphone className="w-4 h-4 text-primary shrink-0 mt-0.5"/>
                     )}
                     <div>
                       <h3 className="font-semibold">{a.title}</h3>
@@ -265,7 +275,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
-              <Megaphone className="w-12 h-12 mx-auto mb-4 opacity-30" />
+              <Megaphone className="w-12 h-12 mx-auto mb-4 opacity-30"/>
               <p className="text-lg">No announcements yet</p>
               <p className="text-sm">Check back later for updates.</p>
             </div>
@@ -287,7 +297,7 @@ export default function Home() {
             <div className="mt-8">
               <a href={getOsuLoginUrl()}>
                 <Button variant="primary" size="lg" className="gap-2 text-base">
-                  <Gamepad2 className="w-5 h-5" />
+                  <Gamepad2 className="w-5 h-5"/>
                   Get Started with osu!
                 </Button>
               </a>
@@ -298,9 +308,10 @@ export default function Home() {
 
       {/* ======== Footer ======== */}
       <footer className="border-t border-border py-8">
-        <div className="mx-auto max-w-7xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+        <div
+          className="mx-auto max-w-7xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Gamepad2 className="w-4 h-4" />
+            <Gamepad2 className="w-4 h-4"/>
             <span>RCT Hub &mdash; osu! Tournament Platform</span>
           </div>
           <div className="flex items-center gap-6">
