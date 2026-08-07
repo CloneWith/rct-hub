@@ -82,11 +82,11 @@ const blankBm = {
   modString: "NM",
 };
 
-const blankAnn = { title: "", content: "", pinned: false };
+const blankAnn = {title: "", content: "", pinned: false};
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const {user} = useAuth();
   const isAdmin = user?.roles.includes("ADMIN") ?? false;
   const [activeTab, setActiveTab] = useState("users");
 
@@ -140,17 +140,17 @@ export default function AdminPage() {
   const saveUser = () => {
     if (!editUserId) return;
     updateRoles.mutate(
-      { id: editUserId, roles: editRoles },
-      { onSuccess: () => setEditUserId(null) },
+      {id: editUserId, roles: editRoles},
+      {onSuccess: () => setEditUserId(null)},
     );
   };
 
   const toggleBan = (u: UserItem) => {
-    setBanned.mutate({ id: u.id, isBanned: !u.isBanned });
+    setBanned.mutate({id: u.id, isBanned: !u.isBanned});
   };
 
   const changeVerify = (u: UserItem, status: string) => {
-    setVerify.mutate({ id: u.id, verifyStatus: status });
+    setVerify.mutate({id: u.id, verifyStatus: status});
   };
 
   // ---- Beatmap modal ----
@@ -177,11 +177,11 @@ export default function AdminPage() {
   const saveBm = () => {
     if (bmEditId) {
       updateBm.mutate(
-        { id: bmEditId, ...bmF },
-        { onSuccess: () => setBmModal(false) },
+        {id: bmEditId, ...bmF},
+        {onSuccess: () => setBmModal(false)},
       );
     } else {
-      createBm.mutate(bmF, { onSuccess: () => setBmModal(false) });
+      createBm.mutate(bmF, {onSuccess: () => setBmModal(false)});
     }
   };
 
@@ -199,18 +199,18 @@ export default function AdminPage() {
 
   const openAnnEdit = (a: AnnouncementItem) => {
     setAnnEditId(a.id);
-    setAnnF({ title: a.title, content: a.content, pinned: a.pinned });
+    setAnnF({title: a.title, content: a.content, pinned: a.pinned});
     setAnnModal(true);
   };
 
   const saveAnn = () => {
     if (annEditId) {
       updateAnn.mutate(
-        { id: annEditId, ...annF },
-        { onSuccess: () => setAnnModal(false) },
+        {id: annEditId, ...annF},
+        {onSuccess: () => setAnnModal(false)},
       );
     } else {
-      createAnn.mutate(annF, { onSuccess: () => setAnnModal(false) });
+      createAnn.mutate(annF, {onSuccess: () => setAnnModal(false)});
     }
   };
 
@@ -225,14 +225,14 @@ export default function AdminPage() {
   if (!user)
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Spinner size="lg" />
+        <Spinner size="lg"/>
       </div>
     );
 
   if (!isAdmin)
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6">
-        <Shield className="w-16 h-16 text-muted-foreground/30" />
+        <Shield className="w-16 h-16 text-muted-foreground/30"/>
         <h1 className="text-2xl font-bold">Access Denied</h1>
         <p className="text-muted-foreground">
           You need admin privileges to access this page.
@@ -241,7 +241,7 @@ export default function AdminPage() {
           variant="secondary"
           onPress={() => router.push("/")}
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4"/>
           Back to Home
         </Button>
       </div>
@@ -251,7 +251,7 @@ export default function AdminPage() {
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
       <div className="flex items-center gap-4 mb-8">
-        <Shield className="w-8 h-8 text-primary" />
+        <Shield className="w-8 h-8 text-primary"/>
         <div>
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <p className="text-sm text-muted-foreground">
@@ -265,135 +265,141 @@ export default function AdminPage() {
         onSelectionChange={(k) => setActiveTab(k as string)}
         className="mb-8"
       >
-        <Tabs.Tab id="users">
-          <Users className="w-4 h-4 inline mr-1.5" />
-          Users
-        </Tabs.Tab>
-        <Tabs.Tab id="beatmaps">
-          <Music className="w-4 h-4 inline mr-1.5" />
-          Beatmaps
-        </Tabs.Tab>
-        <Tabs.Tab id="announcements">
-          <Megaphone className="w-4 h-4 inline mr-1.5" />
-          Announcements
-        </Tabs.Tab>
-      </Tabs>
+        <Tabs.ListContainer>
+          <Tabs.List>
+            <Tabs.Tab id="users">
+              <Users className="w-4 h-4 inline mr-1.5"/>
+              Users
+              <Tabs.Indicator/>
+            </Tabs.Tab>
+            <Tabs.Tab id="beatmaps">
+              <Music className="w-4 h-4 inline mr-1.5"/>
+              Beatmaps
+              <Tabs.Indicator/>
+            </Tabs.Tab>
+            <Tabs.Tab id="announcements">
+              <Megaphone className="w-4 h-4 inline mr-1.5"/>
+              Announcements
+              <Tabs.Indicator/>
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs.ListContainer>
 
-      {/* ============ USERS ============ */}
-      {activeTab === "users" &&
-        (usersLoading ? (
-          <div className="flex justify-center py-12">
-            <Spinner />
-          </div>
-        ) : (
-          <Table>
-            <Table.ScrollContainer>
-              <Table.Content aria-label="Users">
-                <Table.Header>
-                  <Table.Column>User</Table.Column>
-                  <Table.Column>Roles</Table.Column>
-                  <Table.Column>Verify</Table.Column>
-                  <Table.Column>Banned</Table.Column>
-                  <Table.Column>Actions</Table.Column>
-                </Table.Header>
-                <Table.Body>
-                  {users.map((u) => (
-                    <Table.Row key={u.id}>
-                      <Table.Cell>
-                        <div className="flex items-center gap-3">
-                          <Avatar size="sm">
-                            <Avatar.Image src={u.avatarUrl} alt="" />
-                            <Avatar.Fallback>
-                              {u.username.slice(0, 2).toUpperCase()}
-                            </Avatar.Fallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">{u.username}</div>
-                            <div className="text-xs text-muted-foreground">
-                              #{u.onlineID}
+        {/* ============ USERS ============ */}
+        <Tabs.Panel id="users">
+          {usersLoading ? (
+            <div className="flex justify-center py-12">
+              <Spinner/>
+            </div>
+          ) : (
+            <Table>
+              <Table.ScrollContainer>
+                <Table.Content aria-label="Users">
+                  <Table.Header>
+                    <Table.Column isRowHeader={true}>User</Table.Column>
+                    <Table.Column>Roles</Table.Column>
+                    <Table.Column>Verify</Table.Column>
+                    <Table.Column>Banned</Table.Column>
+                    <Table.Column>Actions</Table.Column>
+                  </Table.Header>
+                  <Table.Body>
+                    {users.map((u) => (
+                      <Table.Row key={u.id}>
+                        <Table.Cell>
+                          <div className="flex items-center gap-3">
+                            <Avatar size="sm">
+                              <Avatar.Image src={u.avatarUrl} alt=""/>
+                              <Avatar.Fallback>
+                                {u.username.slice(0, 2).toUpperCase()}
+                              </Avatar.Fallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{u.username}</div>
+                              <div className="text-xs text-muted-foreground">
+                                #{u.onlineID}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Table.Cell>
-                      <Table.Cell>
-                        <div className="flex flex-wrap gap-1">
-                          {u.roles.map((r) => (
-                            <Chip
-                              key={r}
+                        </Table.Cell>
+                        <Table.Cell>
+                          <div className="flex flex-wrap gap-1">
+                            {u.roles.map((r) => (
+                              <Chip
+                                key={r}
+                                size="sm"
+                                variant="secondary"
+                                color={chipColor(r)}
+                              >
+                                {r}
+                              </Chip>
+                            ))}
+                          </div>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Chip
+                            size="sm"
+                            variant="secondary"
+                            color={verifyColor(u.verifyStatus)}
+                          >
+                            {u.verifyStatus}
+                          </Chip>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Chip
+                            size="sm"
+                            variant="secondary"
+                            color={u.isBanned ? "danger" : "success"}
+                          >
+                            {u.isBanned ? "Yes" : "No"}
+                          </Chip>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <div className="flex gap-2">
+                            <Button
                               size="sm"
-                              variant="secondary"
-                              color={chipColor(r)}
+                              variant="ghost"
+                              isIconOnly
+                              onPress={() => openUserEdit(u.id)}
                             >
-                              {r}
-                            </Chip>
-                          ))}
-                        </div>
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Chip
-                          size="sm"
-                          variant="secondary"
-                          color={verifyColor(u.verifyStatus)}
-                        >
-                          {u.verifyStatus}
-                        </Chip>
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Chip
-                          size="sm"
-                          variant="secondary"
-                          color={u.isBanned ? "danger" : "success"}
-                        >
-                          {u.isBanned ? "Yes" : "No"}
-                        </Chip>
-                      </Table.Cell>
-                      <Table.Cell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            isIconOnly
-                            onPress={() => openUserEdit(u.id)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={u.isBanned ? "secondary" : "danger"}
-                            onPress={() => toggleBan(u)}
-                            isDisabled={setBanned.isPending}
-                          >
-                            {u.isBanned ? "Unban" : "Ban"}
-                          </Button>
-                        </div>
-                      </Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Content>
-            </Table.ScrollContainer>
-          </Table>
-        ))}
+                              <Pencil className="w-4 h-4"/>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={u.isBanned ? "secondary" : "danger"}
+                              onPress={() => toggleBan(u)}
+                              isDisabled={setBanned.isPending}
+                            >
+                              {u.isBanned ? "Unban" : "Ban"}
+                            </Button>
+                          </div>
+                        </Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
+            </Table>
+          )}
+        </Tabs.Panel>
 
-      {/* ============ BEATMAPS ============ */}
-      {activeTab === "beatmaps" && (
-        <>
+        {/* ============ BEATMAPS ============ */}
+        <Tabs.Panel id="beatmaps">
           <div className="flex justify-end mb-4">
             <Button variant="primary" size="sm" onPress={openBmCreate}>
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4"/>
               Add Beatmap
             </Button>
           </div>
           {beatmapsLoading ? (
             <div className="flex justify-center py-12">
-              <Spinner />
+              <Spinner/>
             </div>
           ) : (
             <Table>
               <Table.ScrollContainer>
                 <Table.Content aria-label="Beatmaps">
                   <Table.Header>
-                    <Table.Column>Beatmap</Table.Column>
+                    <Table.Column isRowHeader={true}>Beatmap</Table.Column>
                     <Table.Column>Difficulty</Table.Column>
                     <Table.Column>Mod</Table.Column>
                     <Table.Column>Status</Table.Column>
@@ -437,7 +443,7 @@ export default function AdminPage() {
                               isIconOnly
                               onPress={() => openBmEdit(b)}
                             >
-                              <Pencil className="w-4 h-4" />
+                              <Pencil className="w-4 h-4"/>
                             </Button>
                             <Button
                               size="sm"
@@ -445,7 +451,7 @@ export default function AdminPage() {
                               isIconOnly
                               onPress={() => removeBm(b.id)}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4"/>
                             </Button>
                           </div>
                         </Table.Cell>
@@ -456,28 +462,26 @@ export default function AdminPage() {
               </Table.ScrollContainer>
             </Table>
           )}
-        </>
-      )}
+        </Tabs.Panel>
 
-      {/* ============ ANNOUNCEMENTS ============ */}
-      {activeTab === "announcements" && (
-        <>
+        {/* ============ ANNOUNCEMENTS ============ */}
+        <Tabs.Panel id="announcements">
           <div className="flex justify-end mb-4">
             <Button variant="primary" size="sm" onPress={openAnnCreate}>
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4"/>
               New Announcement
             </Button>
           </div>
           {annsLoading ? (
             <div className="flex justify-center py-12">
-              <Spinner />
+              <Spinner/>
             </div>
           ) : (
             <Table>
               <Table.ScrollContainer>
                 <Table.Content aria-label="Announcements">
                   <Table.Header>
-                    <Table.Column>Title</Table.Column>
+                    <Table.Column isRowHeader={true}>Title</Table.Column>
                     <Table.Column>Pinned</Table.Column>
                     <Table.Column>Published</Table.Column>
                     <Table.Column>Actions</Table.Column>
@@ -517,7 +521,7 @@ export default function AdminPage() {
                               isIconOnly
                               onPress={() => openAnnEdit(a)}
                             >
-                              <Pencil className="w-4 h-4" />
+                              <Pencil className="w-4 h-4"/>
                             </Button>
                             {!a.publishedAt && (
                               <Button
@@ -534,7 +538,7 @@ export default function AdminPage() {
                               isIconOnly
                               onPress={() => removeAnn(a.id)}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4"/>
                             </Button>
                           </div>
                         </Table.Cell>
@@ -545,8 +549,8 @@ export default function AdminPage() {
               </Table.ScrollContainer>
             </Table>
           )}
-        </>
-      )}
+        </Tabs.Panel>
+      </Tabs>
 
       {/* ============ USER EDIT MODAL ============ */}
       <Modal
@@ -603,7 +607,7 @@ export default function AdminPage() {
                     >
                       <Label>Verify Status</Label>
                       <Select.Trigger>
-                        <Select.Value />
+                        <Select.Value/>
                       </Select.Trigger>
                       <Select.Popover>
                         <ListBox>
@@ -721,12 +725,12 @@ export default function AdminPage() {
                   <Select
                     value={bmF.modString}
                     onChange={(v) =>
-                      setBmF((p) => ({ ...p, modString: v as string }))
+                      setBmF((p) => ({...p, modString: v as string}))
                     }
                   >
                     <Label>Mod</Label>
                     <Select.Trigger>
-                      <Select.Value />
+                      <Select.Value/>
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
@@ -741,12 +745,12 @@ export default function AdminPage() {
                   <Select
                     value={bmF.status}
                     onChange={(v) =>
-                      setBmF((p) => ({ ...p, status: v as string }))
+                      setBmF((p) => ({...p, status: v as string}))
                     }
                   >
                     <Label>Status</Label>
                     <Select.Trigger>
-                      <Select.Value />
+                      <Select.Value/>
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
@@ -824,7 +828,7 @@ export default function AdminPage() {
                       type="checkbox"
                       checked={annF.pinned}
                       onChange={(e) =>
-                        setAnnF((p) => ({ ...p, pinned: e.target.checked }))
+                        setAnnF((p) => ({...p, pinned: e.target.checked}))
                       }
                     />
                     <Label>Pinned to top</Label>
