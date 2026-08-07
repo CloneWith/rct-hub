@@ -53,6 +53,7 @@ import {
   type AnnouncementItem,
 } from "@/app/lib/hooks";
 import VerifyBadge from "@/app/components/VerifyBadge";
+import RoleBadge from "@/app/components/RoleBadge";
 
 // ---- constants ----
 const ROLE_OPTIONS = ["PLAYER", "STRATEGIST", "REFEREE", "STREAMER", "ADMIN"];
@@ -373,14 +374,7 @@ export default function AdminPage() {
                         <Table.Cell>
                           <div className="flex flex-wrap gap-1">
                             {u.roles.map((r) => (
-                              <Chip
-                                key={r}
-                                size="sm"
-                                variant="soft"
-                                color={chipColor(r)}
-                              >
-                                {r}
-                              </Chip>
+                              <RoleBadge key={r} role={r} />
                             ))}
                           </div>
                         </Table.Cell>
