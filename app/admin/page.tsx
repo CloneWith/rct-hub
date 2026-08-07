@@ -52,6 +52,7 @@ import {
   type BeatmapItem,
   type AnnouncementItem,
 } from "@/app/lib/hooks";
+import VerifyBadge from "@/app/components/VerifyBadge";
 
 // ---- constants ----
 const ROLE_OPTIONS = ["PLAYER", "STRATEGIST", "REFEREE", "STREAMER", "ADMIN"];
@@ -73,14 +74,6 @@ function chipColor(role: string) {
     default:
       return "default" as const;
   }
-}
-
-function verifyColor(s: string) {
-  return s === "VERIFIED"
-    ? ("success" as const)
-    : s === "PENDING"
-      ? ("warning" as const)
-      : ("default" as const);
 }
 
 // ---- empty beatmap form ----
@@ -371,7 +364,7 @@ export default function AdminPage() {
                             </Avatar>
                             <div>
                               <div className="font-medium">{u.username}</div>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-xs text-muted-foreground font-mono">
                                 #{u.onlineID}
                               </div>
                             </div>
@@ -392,13 +385,7 @@ export default function AdminPage() {
                           </div>
                         </Table.Cell>
                         <Table.Cell>
-                          <Chip
-                            size="sm"
-                            variant="soft"
-                            color={verifyColor(u.verifyStatus)}
-                          >
-                            {u.verifyStatus}
-                          </Chip>
+                          <VerifyBadge status={u.verifyStatus} />
                         </Table.Cell>
                         <Table.Cell>
                           <Chip
