@@ -249,29 +249,30 @@ export default function Home() {
             </div>
           ) : announcements.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-3">
-              {announcements.map((a) => (
-                <Card
-                  key={a.id}
-                  className="p-6 border border-border hover:border-primary/30 transition-colors"
-                >
-                  <div className="flex items-start gap-2 mb-3">
-                    {a.pinned && (
-                      <Megaphone className="w-4 h-4 text-primary shrink-0 mt-0.5"/>
-                    )}
-                    <div>
-                      <h3 className="font-semibold">{a.title}</h3>
-                      {a.author && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          by {a.author.username}
-                        </p>
+              {announcements.filter(a => a.visible)
+                .map((a) => (
+                  <Card
+                    key={a.id}
+                    className="p-6 border border-border hover:border-primary/30 transition-colors"
+                  >
+                    <div className="flex items-start gap-2 mb-3">
+                      {a.pinned && (
+                        <Megaphone className="w-4 h-4 text-primary shrink-0 mt-0.5"/>
                       )}
+                      <div>
+                        <h3 className="font-semibold">{a.title}</h3>
+                        {a.author && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            by {a.author.username}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {a.content?.replace(/<[^>]*>/g, "").slice(0, 200)}
-                  </p>
-                </Card>
-              ))}
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {a.content?.replace(/<[^>]*>/g, "").slice(0, 200)}
+                    </p>
+                  </Card>
+                ))}
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
