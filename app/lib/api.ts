@@ -248,3 +248,23 @@ export async function graphqlRequest<TResult, TVariables>(
   });
   return res.json();
 }
+
+/**
+ * Server-only variant of `graphqlRequest`.
+ *
+ * Does not read `localStorage` (which is unavailable on the server) and instead
+ * sends a plain JSON request. Use this for public, server-rendered GraphQL
+ * reads such as the News feed.
+ */
+export async function serverGraphQLRequest<TResult, TVariables>(
+  doc: TypedDocumentString<TResult, TVariables>,
+  variables?: TVariables,
+): Promise<GraphQLResponse<TResult>> {
+  const res = await fetch(GRAPHQL_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: doc.toString(), variables }),
+    next: { revalidate: 60 },
+  });
+  return res.json();
+}
