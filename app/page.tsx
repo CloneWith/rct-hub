@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Button, Card, Chip, Skeleton } from "@heroui/react";
+import { Button, Card, Skeleton } from "@heroui/react";
 import {
   Gamepad2,
   Users,
@@ -233,7 +233,7 @@ export default function Home() {
                 Updates and announcements from the RCT Hub team.
               </p>
             </div>
-            <Link href="/announcements">
+            <Link href="/news">
               <Button variant="ghost" className="gap-2">
                 View all
                 <ArrowRight className="w-4 h-4"/>

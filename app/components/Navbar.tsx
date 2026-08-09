@@ -19,7 +19,7 @@ const navLinks = [
   { href: "/", label: "Home", icon: Gamepad2 },
   { href: "/rooms", label: "Rooms", icon: Users },
   { href: "/matches", label: "Matches", icon: Swords },
-  { href: "/announcements", label: "News", icon: Megaphone },
+  { href: "/news", label: "News", icon: Megaphone },
 ];
 
 export function Navbar() {
