@@ -229,7 +229,7 @@ export default function AdminPage() {
   };
 
   const removeBm = (b: BeatmapItem) => {
-    setDeleteTarget({ type: "beatmap", id: b.id, title: `${b.title} — ${b.artist}` });
+    setDeleteTarget({type: "beatmap", id: b.id, title: `${b.title} — ${b.artist}`});
   };
 
   // ---- Announcement modal ----
@@ -245,6 +245,10 @@ export default function AdminPage() {
     setAnnModal(true);
   };
 
+  const setAnnVisibility = (a: AnnouncementItem, isVisible: boolean) => {
+    updateAnn.mutate({id: a.id, visible: isVisible});
+  };
+
   const saveAnn = () => {
     if (annEditId) {
       updateAnn.mutate(
@@ -257,7 +261,7 @@ export default function AdminPage() {
   };
 
   const removeAnn = (a: AnnouncementItem) => {
-    setDeleteTarget({ type: "announcement", id: a.id, title: a.title });
+    setDeleteTarget({type: "announcement", id: a.id, title: a.title});
   };
 
   const pubAnn = (id: string) => publishAnn.mutate(id);
@@ -374,12 +378,12 @@ export default function AdminPage() {
                         <Table.Cell>
                           <div className="flex flex-wrap gap-1">
                             {u.roles.map((r) => (
-                              <RoleBadge key={r} role={r} />
+                              <RoleBadge key={r} role={r}/>
                             ))}
                           </div>
                         </Table.Cell>
                         <Table.Cell>
-                          <VerifyBadge status={u.verifyStatus} />
+                          <VerifyBadge status={u.verifyStatus}/>
                         </Table.Cell>
                         <Table.Cell>
                           <Chip
@@ -518,6 +522,7 @@ export default function AdminPage() {
               <Table.ScrollContainer>
                 <Table.Content aria-label="Announcements">
                   <Table.Header>
+                    <Table.Column isRowHeader={true}>Visible</Table.Column>
                     <Table.Column isRowHeader={true}>Title</Table.Column>
                     <Table.Column>Pinned</Table.Column>
                     <Table.Column>Published</Table.Column>
@@ -526,6 +531,19 @@ export default function AdminPage() {
                   <Table.Body>
                     {anns.map((a) => (
                       <Table.Row key={a.id}>
+                        <Table.Cell>
+                          <Switch
+                            aria-label="Set this announcement visible"
+                            isSelected={a.visible}
+                            onChange={v => setAnnVisibility(a, v)}
+                          >
+                            <Switch.Content>
+                              <Switch.Control>
+                                <Switch.Thumb/>
+                              </Switch.Control>
+                            </Switch.Content>
+                          </Switch>
+                        </Table.Cell>
                         <Table.Cell>
                           <div className="font-medium">{a.title}</div>
                           <div className="text-xs text-muted-foreground line-clamp-1">
