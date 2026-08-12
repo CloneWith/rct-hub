@@ -399,7 +399,7 @@ The REST surface is intentionally slim. Read operations and in-match commands ar
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/api/v1/beatmaps` | Admin | Create beatmap |
-| PUT | `/api/v1/beatmaps/:id` | Admin | Update beatmap |
+| PATCH | `/api/v1/beatmaps/:id` | Admin | Partial update beatmap |
 | DELETE | `/api/v1/beatmaps/:id` | Admin | Delete beatmap |
 
 ### Users (admin)
@@ -415,7 +415,7 @@ The REST surface is intentionally slim. Read operations and in-match commands ar
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/api/v1/announcements` | Admin | Create announcement |
-| PUT | `/api/v1/announcements/:id` | Admin | Update announcement |
+| PATCH | `/api/v1/announcements/:id` | Admin | Partial update announcement |
 | DELETE | `/api/v1/announcements/:id` | Admin | Delete announcement |
 | POST | `/api/v1/announcements/:id/publish` | Admin | Publish announcement |
 

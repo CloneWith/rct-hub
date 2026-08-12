@@ -182,7 +182,7 @@ export const adminBeatmaps = {
     restFetch("/beatmaps", { method: "POST", body: JSON.stringify(body) }),
 
   update: (id: string, body: Record<string, unknown>) =>
-    restFetch(`/beatmaps/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    restFetch(`/beatmaps/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   delete: (id: string) =>
     restFetch(`/beatmaps/${id}`, { method: "DELETE" }),
@@ -212,7 +212,7 @@ export const adminAnnouncements = {
     restFetch("/announcements", { method: "POST", body: JSON.stringify(body) }),
 
   update: (id: string, body: Record<string, unknown>) =>
-    restFetch(`/announcements/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    restFetch(`/announcements/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   delete: (id: string) =>
     restFetch(`/announcements/${id}`, { method: "DELETE" }),

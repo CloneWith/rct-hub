@@ -259,6 +259,28 @@ export function useUpdateVerifyStatus() {
 // Admin — Beatmaps
 // =========================================================================
 
+// Maps the camelCase beatmap form values used by the admin UI to the
+// snake_case keys expected by the REST API.
+function buildBeatmapPayload(body: Record<string, unknown>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  if (body.title !== undefined) payload.title = body.title;
+  if (body.artist !== undefined) payload.artist = body.artist;
+  if (body.version !== undefined) payload.version = body.version;
+  if (body.status !== undefined) payload.status = body.status;
+  if (body.difficultyRating !== undefined) payload.difficulty_rating = body.difficultyRating;
+  if (body.modString !== undefined) payload.mod_string = body.modString;
+  if (body.onlineID !== undefined) payload.id = body.onlineID;
+  return payload;
+}
+
+// Same as `buildBeatmapPayload` but excludes the osu! beatmap id, which is
+// immutable on the backend PATCH endpoint.
+function buildBeatmapPatch(body: Record<string, unknown>): Record<string, unknown> {
+  const { id: _id, ...patch } = buildBeatmapPayload(body);
+  void _id;
+  return patch;
+}
+
 export function useBeatmaps(enabled = true) {
   const { data, isLoading } = useGraphQLData(
     ["admin", "beatmaps"],
@@ -273,7 +295,7 @@ export function useCreateBeatmap() {
   const qc = useQueryClient();
   return useToastedMutation({
     mutationFn: (body: Record<string, unknown>) =>
-      restFetch("/beatmaps", { method: "POST", body: JSON.stringify(body) }).then(throwOnRestError),
+      restFetch("/beatmaps", { method: "POST", body: JSON.stringify(buildBeatmapPayload(body)) }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
   });
 }
@@ -282,7 +304,7 @@ export function useUpdateBeatmap() {
   const qc = useQueryClient();
   return useToastedMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
-      restFetch(`/beatmaps/${id}`, { method: "PUT", body: JSON.stringify(body) }).then(throwOnRestError),
+      restFetch(`/beatmaps/${id}`, { method: "PATCH", body: JSON.stringify(buildBeatmapPatch(body)) }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
   });
 }
@@ -300,6 +322,18 @@ export function useDeleteBeatmap() {
 // Admin — Announcements
 // =========================================================================
 
+function buildAnnouncementPayload(body: Record<string, unknown>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  if (body.title !== undefined) payload.title = body.title;
+  if (body.content !== undefined) payload.content = body.content;
+  if (body.pinned !== undefined) payload.pinned = body.pinned;
+  if (body.visible !== undefined) payload.visible = body.visible;
+  // The visibility toggle currently sends `isVisibility`; normalise it to the
+  // backend field name `visible`.
+  if (body.isVisibility !== undefined) payload.visible = body.isVisibility;
+  return payload;
+}
+
 export function useAnnouncements(enabled = true) {
   const { data, isLoading } = useGraphQLData(
     ["announcements"],
@@ -314,7 +348,7 @@ export function useCreateAnnouncement() {
   const qc = useQueryClient();
   return useToastedMutation({
     mutationFn: (body: Record<string, unknown>) =>
-      restFetch("/announcements", { method: "POST", body: JSON.stringify(body) }).then(throwOnRestError),
+      restFetch("/announcements", { method: "POST", body: JSON.stringify(buildAnnouncementPayload(body)) }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
   });
 }
@@ -323,7 +357,7 @@ export function useUpdateAnnouncement() {
   const qc = useQueryClient();
   return useToastedMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
-      restFetch(`/announcements/${id}`, { method: "PUT", body: JSON.stringify(body) }).then(throwOnRestError),
+      restFetch(`/announcements/${id}`, { method: "PATCH", body: JSON.stringify(buildAnnouncementPayload(body)) }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
   });
 }
