@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { QueryProvider } from "@/app/lib/query-provider";
-import { Toast } from "@heroui/react";
-import { AuthProvider } from "@/app/context/AuthContext";
 import { Navbar } from "@/app/components/Navbar";
+import { Providers } from "@/app/components/Providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,13 +32,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <QueryProvider>
-          <AuthProvider>
+        <Providers>
             <Navbar />
             <main className="flex-1">{children}</main>
-            <Toast.Provider placement="bottom end" />
-          </AuthProvider>
-        </QueryProvider>
+        </Providers>
       </body>
     </html>
   );
