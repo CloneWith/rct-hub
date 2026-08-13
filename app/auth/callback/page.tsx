@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Spinner } from "@heroui/react";
 import { useAuth } from "@/app/context/AuthContext";
@@ -10,30 +10,25 @@ function CallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
-  const [error, setError] = useState<string | null>(null);
+  const token = searchParams.get("token");
 
   useEffect(() => {
-    const token = searchParams.get("token");
-
-    if (!token) {
-      setError("No token received from OAuth callback.");
-      return;
-    }
+    if (!token) return;
 
     login(token).then(() => {
       // Redirect to home after a brief moment for state to settle
       router.replace("/");
     });
-  }, [searchParams, login, router]);
+  }, [token, login, router]);
 
-  if (error) {
+  if (!token) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <div className="w-12 h-12 rounded-full bg-danger/20 flex items-center justify-center">
           <span className="text-danger text-2xl font-bold">!</span>
         </div>
         <h1 className="text-xl font-semibold">Authentication Failed</h1>
-        <p className="text-muted-foreground">{error}</p>
+        <p className="text-muted-foreground">No token received from OAuth callback.</p>
       </div>
     );
   }
