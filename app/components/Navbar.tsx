@@ -11,15 +11,29 @@ import {
   Chip,
   Separator,
 } from "@heroui/react";
-import { Gamepad2, Users, Swords, Megaphone, Shield, LogIn, LogOut, ChevronDown, Menu, X } from "lucide-react";
+import {
+  Grid3X3,
+  Home,
+  Swords,
+  Megaphone,
+  Shield,
+  LogIn,
+  LogOut,
+  ChevronDown,
+  Menu,
+  X,
+  BookOpen,
+  Gift,
+} from "lucide-react";
 import { getOsuLoginUrl } from "@/app/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 
 const navLinks = [
-  { href: "/", label: "Home", icon: Gamepad2 },
-  { href: "/rooms", label: "Rooms", icon: Users },
-  { href: "/matches", label: "Matches", icon: Swords },
-  { href: "/news", label: "News", icon: Megaphone },
+  { href: "/", label: "首页", icon: Home },
+  { href: "/rules", label: "玩法规则", icon: BookOpen },
+  { href: "/format", label: "赛制", icon: Swords },
+  { href: "/prizes", label: "奖品", icon: Gift },
+  { href: "/news", label: "公告", icon: Megaphone },
 ];
 
 export function Navbar() {
@@ -28,6 +42,16 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (href: string) => pathname === href;
+  const desktopClass = (active: boolean) =>
+    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors " +
+    (active
+      ? "bg-primary/15 text-primary"
+      : "text-muted-foreground hover:text-foreground hover:bg-muted");
+  const mobileClass = (active: boolean) =>
+    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors " +
+    (active
+      ? "bg-primary/15 text-primary"
+      : "text-muted-foreground hover:text-foreground hover:bg-muted");
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
@@ -35,24 +59,20 @@ export function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 font-bold text-lg text-primary hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 font-bold text-lg transition-opacity hover:opacity-80"
         >
-          <Gamepad2 className="w-6 h-6" />
-          <span className="hidden sm:inline">RCT Hub</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Grid3X3 className="h-4 w-4" />
+          </span>
+          <span>
+            RCT <span className="text-gold">S1</span>
+          </span>
         </Link>
 
         {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-1">
           {navLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                isActive(href)
-                  ? "bg-primary/20 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
+            <Link key={href} href={href} className={desktopClass(isActive(href))}>
               <Icon className="w-4 h-4" />
               {label}
             </Link>
@@ -98,7 +118,7 @@ export function Navbar() {
                     <Dropdown.Item id="admin" textValue="Admin Dashboard" href="/admin">
                       <div className="flex items-center gap-2">
                         <Shield className="w-4 h-4" />
-                        <Label>Admin Dashboard</Label>
+                        <Label>管理后台</Label>
                       </div>
                     </Dropdown.Item>
                   )}
@@ -109,7 +129,7 @@ export function Navbar() {
                   >
                     <div className="flex items-center gap-2 text-danger">
                       <LogOut className="w-4 h-4" />
-                      <Label>Logout</Label>
+                      <Label>退出登录</Label>
                     </div>
                   </Dropdown.Item>
                 </Dropdown.Menu>
@@ -119,8 +139,8 @@ export function Navbar() {
             <a href={getOsuLoginUrl()}>
               <Button variant="primary" size="sm" className="gap-2">
                 <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">Login with osu!</span>
-                <span className="sm:hidden">Login</span>
+                <span className="hidden sm:inline">使用 osu! 登录</span>
+                <span className="sm:hidden">登录</span>
               </Button>
             </a>
           )}
@@ -147,11 +167,7 @@ export function Navbar() {
                 key={href}
                 href={href}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  isActive(href)
-                    ? "bg-primary/20 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
+                className={mobileClass(isActive(href))}
               >
                 <Icon className="w-5 h-5" />
                 {label}
@@ -161,14 +177,10 @@ export function Navbar() {
               <Link
                 href="/admin"
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  isActive("/admin")
-                    ? "bg-primary/20 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
+                className={mobileClass(isActive("/admin"))}
               >
                 <Shield className="w-5 h-5" />
-                Admin
+                管理后台
               </Link>
             )}
             {user && (
@@ -180,7 +192,7 @@ export function Navbar() {
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-danger hover:bg-danger/10 transition-colors"
               >
                 <LogOut className="w-5 h-5" />
-                Logout
+                退出登录
               </button>
             )}
           </div>

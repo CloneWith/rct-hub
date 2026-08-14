@@ -3,9 +3,10 @@
 @plugin "@tailwindcss/typography";
 
 /*
- * HeroUI Theme Customization
- * Add this to your global.css after importing @heroui/styles
- * Only includes variables users need to customize
+ * RCT Hub — RCT S1 主题（少女终末旅行 · 核冬天）
+ * 主题色：烬红（烛）/ 金黄（瞳色·警戒色）/ 灰黑（核尘）/ 深绿（迷彩）/ 雪白（花白）
+ *
+ * HeroUI 主题变量自定义
  * @see https://heroui.com/docs/react/getting-started/theming
  */
 
@@ -14,83 +15,111 @@
 .default,
 [data-theme="light"],
 [data-theme="default"] {
-  --primary: #f26383;
+  --primary: #d9402f;
+  --primary-foreground: #fff5f0;
 
-  /* Theme Colors (Light Mode) */
-  --accent: oklch(68.78% 0.1771 9.25);
-  --accent-foreground: oklch(15% 0.0300 9.25);
-  --background: oklch(97.02% 0.0014 9.25);
-  --border: oklch(90.00% 0.0014 9.25);
-  --danger: #e55d5d;
-  --danger-foreground: oklch(99.11% 0 0);
-  --default: oklch(94.00% 0.0014 9.25);
-  --default-foreground: oklch(21.03% 0.0059 9.25);
-  --field-background: oklch(100.00% 0.0007 9.25);
+  --accent: #c9931f;
+  --accent-foreground: #1c1303;
+  --background: #f4efec;
+  --border: #e3dad5;
+  --danger: #d9433c;
+  --danger-foreground: #fff5f0;
+  --default: #ece5e1;
+  --default-foreground: #201a18;
+  --field-background: #fdfaf8;
   --field-border: transparent;
-  --field-foreground: oklch(21.03% 0.0014 9.25);
-  --field-placeholder: oklch(55.17% 0.0028 9.25);
-  --focus: oklch(68.78% 0.1771 9.25);
-  --foreground: oklch(21.03% 0.0014 9.25);
-  --muted: oklch(55.17% 0.0028 9.25);
-  --overlay: oklch(100.00% 0.0004 9.25);
-  --overlay-foreground: oklch(21.03% 0.0014 9.25);
-  --scrollbar: oklch(87.10% 0.0014 9.25);
-  --segment: oklch(100.00% 0.0014 9.25);
-  --segment-foreground: oklch(21.03% 0.0014 9.25);
-  --separator: oklch(92.00% 0.0014 9.25);
-  --success: #57bd7c;
-  --surface: oklch(100.00% 0.0007 9.25);
-  --surface-foreground: oklch(21.03% 0.0014 9.25);
-  --surface-secondary: oklch(95.24% 0.0011 9.25);
-  --surface-secondary-foreground: oklch(21.03% 0.0014 9.25);
-  --surface-tertiary: oklch(93.73% 0.0011 9.25);
-  --surface-tertiary-foreground: oklch(21.03% 0.0014 9.25);
-  --warning: #ff954f;
+  --field-foreground: #201a18;
+  --field-placeholder: #9a8f89;
+  --focus: #c9931f;
+  --foreground: #201a18;
+  --muted: #8c7f79;
+  --muted-foreground: #8c7f79;
+  --overlay: #fdfaf8;
+  --overlay-foreground: #201a18;
+  --scrollbar: #d8cfc9;
+  --segment: #fdfaf8;
+  --segment-foreground: #201a18;
+  --separator: #eadfd9;
+  --success: #3f8f5f;
+  --surface: #fdfaf8;
+  --surface-foreground: #201a18;
+  --surface-secondary: #f3ede9;
+  --surface-secondary-foreground: #201a18;
+  --surface-tertiary: #ece4df;
+  --surface-tertiary-foreground: #201a18;
+  --warning: #e08a3c;
 
-  /* Border Radius */
+  /* 新增语义色 */
+  --snow: #faf6f2;
+  --ember: #d9402f;
+  --gold: #c9931f;
+  --pine: #1f3b2c;
+  --ash: #221d1c;
+
   --radius: 0.5rem;
   --field-radius: 0.75rem;
-
-  /* Font Family */
-  /* Make sure to load Inter font in your app */
   --font-sans: var(--font-inter);
 }
 
 .dark,
 [data-theme="dark"] {
   color-scheme: dark;
-  /* Theme Colors (Dark Mode) */
-  --accent: oklch(68.78% 0.1771 9.25);
-  --accent-foreground: oklch(15% 0.0300 9.25);
-  --background: oklch(12.00% 0.0014 9.25);
-  --border: oklch(28.00% 0.0014 9.25);
-  --danger-foreground: oklch(99.11% 0 0);
-  --default: oklch(27.40% 0.0014 9.25);
-  --default-foreground: oklch(99.11% 0 0);
-  --field-background: oklch(21.03% 0.0028 9.25);
+
+  /* 烬红 —— 主色 */
+  --primary: #e5483f;
+  --primary-foreground: #fff5f0;
+
+  /* 金黄 —— 强调 / 警戒色 */
+  --accent: #eec15a;
+  --accent-foreground: #211804;
+
+  --background: #120f12;
+  --border: #2a2328;
+  --danger: #e55d5d;
+  --danger-foreground: #fff5f0;
+  --default: #221d20;
+  --default-foreground: #f1e9ec;
+  --field-background: #1b1619;
   --field-border: transparent;
-  --field-foreground: oklch(99.11% 0.0014 9.25);
-  --field-placeholder: oklch(70.50% 0.0028 9.25);
-  --focus: oklch(68.78% 0.1771 9.25);
-  --foreground: oklch(99.11% 0.0014 9.25);
-  --muted: oklch(70.50% 0.0028 9.25);
-  --overlay: oklch(21.03% 0.0028 9.25);
-  --overlay-foreground: oklch(99.11% 0.0014 9.25);
-  --scrollbar: oklch(70.50% 0.0014 9.25);
-  --segment: oklch(39.64% 0.0014 9.25);
-  --segment-foreground: oklch(99.11% 0.0014 9.25);
-  --separator: oklch(25.00% 0.0014 9.25);
-  --surface: oklch(21.03% 0.0028 9.25);
-  --surface-foreground: oklch(99.11% 0.0014 9.25);
-  --surface-secondary: oklch(25.70% 0.0021 9.25);
-  --surface-secondary-foreground: oklch(99.11% 0.0014 9.25);
-  --surface-tertiary: oklch(27.21% 0.0021 9.25);
-  --surface-tertiary-foreground: oklch(99.11% 0.0014 9.25);
+  --field-foreground: #f1e9ec;
+  --field-placeholder: #7d737a;
+  --focus: #eec15a;
+  --foreground: #f1e9ec;
+  --muted: #7d737a;
+  --muted-foreground: #9b9198;
+  --overlay: #1b1619;
+  --overlay-foreground: #f1e9ec;
+  --scrollbar: #3a3238;
+  --segment: #2b2428;
+  --segment-foreground: #f1e9ec;
+  --separator: #2a2328;
+  --success: #57bd7c;
+  --surface: #1b1619;
+  --surface-foreground: #f1e9ec;
+  --surface-secondary: #211b1f;
+  --surface-secondary-foreground: #f1e9ec;
+  --surface-tertiary: #2b2327;
+  --surface-tertiary-foreground: #f1e9ec;
+  --warning: #ff954f;
+
+  /* 新增语义色 */
+  --snow: #f2e9ed;
+  --ember: #e5483f;
+  --gold: #eec15a;
+  --pine: #1f3b2c;
+  --ash: #171315;
+
+  --radius: 0.5rem;
+  --field-radius: 0.75rem;
+  --font-sans: var(--font-geist-sans);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -103,28 +132,184 @@
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* RCT S1 语义色 */
+  --color-snow: var(--snow);
+  --color-ember: var(--ember);
+  --color-gold: var(--gold);
+  --color-pine: var(--pine);
+  --color-ash: var(--ash);
+  --font-sans: var(--font-geist-sans), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans, Arial, Helvetica, sans-serif);
+  font-family: var(--font-sans), "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans SC", Arial, Helvetica, sans-serif;
   min-height: 100vh;
 }
 
-/* Scrollbar styling */
+/* 中文衬线（用于故事 / 引言段落） */
+.font-serif-cjk {
+  font-family: Georgia, "Songti SC", "SimSun", "Noto Serif SC", serif;
+}
+
+/* ---------- 滚动条 ---------- */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--muted);
+  background: var(--ash);
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 3px;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+  background: var(--muted);
+}
+
+/* ---------- 文本渐变 ---------- */
+.text-gradient-ember {
+  background: linear-gradient(120deg, #ff7a63 0%, #e5483f 45%, #eec15a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-snow {
+  background: linear-gradient(180deg, #ffffff 0%, #d9cfd3 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- 发光 ---------- */
+.glow-ember {
+  box-shadow: 0 0 0 1px rgb(229 72 63 / 0.35), 0 0 40px -6px rgb(229 72 63 / 0.55);
+}
+.glow-gold {
+  box-shadow: 0 0 0 1px rgb(238 193 90 / 0.3), 0 0 44px -8px rgb(238 193 90 / 0.5);
+}
+
+/* ---------- 核尘 / 落雪粒子 ---------- */
+@keyframes ash-fall {
+  0% {
+    transform: translate3d(0, -10%, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: var(--ash-opacity, 0.5);
+  }
+  92% {
+    opacity: var(--ash-opacity, 0.5);
+  }
+  100% {
+    transform: translate3d(var(--ash-drift, 20px), 110vh, 0);
+    opacity: 0;
+  }
+}
+
+.ash-particle {
+  position: absolute;
+  top: 0;
+  width: var(--ash-size, 4px);
+  height: var(--ash-size, 4px);
+  border-radius: 9999px;
+  background: var(--ash-color, #f2e9ed);
+  opacity: 0;
+  animation: ash-fall linear infinite;
+  animation-duration: var(--ash-duration, 14s);
+  animation-delay: var(--ash-delay, 0s);
+  will-change: transform, opacity;
+}
+
+/* ---------- 棋子下落（落子动画 · 手册 6.4.1） ---------- */
+@keyframes piece-drop {
+  0% {
+    transform: translateY(-14px) scale(0.92);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(2px) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+.animate-piece-drop {
+  animation: piece-drop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---------- 赢棋闪光 ---------- */
+@keyframes win-flash {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgb(238 193 90 / 0.35), 0 0 18px -4px rgb(238 193 90 / 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgb(238 193 90 / 0.8), 0 0 44px -2px rgb(238 193 90 / 0.9);
+  }
+}
+.animate-win-flash {
+  animation: win-flash 2.4s ease-in-out infinite;
+}
+
+/* ---------- 轻微漂浮 ---------- */
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.animate-floaty {
+  animation: floaty 6s ease-in-out infinite;
+}
+
+/* ---------- 进入视口时的上浮 ---------- */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---------- 滚动显示（配合 Reveal 组件） ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 无障碍：减少动态效果 */
+@media (prefers-reduced-motion: reduce) {
+  .ash-particle,
+  .animate-piece-drop,
+  .animate-win-flash,
+  .animate-floaty,
+  .animate-fade-up,
+  .reveal {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
