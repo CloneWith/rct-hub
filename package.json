@@ -12,11 +12,18 @@
   "dependencies": {
     "@heroui/react": "^3.2.3",
     "@heroui/styles": "^3.2.3",
+    "@mdx-js/loader": "^3.1.1",
+    "@mdx-js/react": "^3.1.1",
+    "@next/mdx": "^16.3.0",
+    "@tailwindcss/typography": "^0.5.20",
     "@tanstack/react-query": "^5.101.4",
+    "@types/mdx": "^2.0.14",
+    "gray-matter": "^4.0.3",
     "lucide-react": "^1.28.0",
     "next": "16.2.12",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "remark-frontmatter": "^5.0.0"
   },
   "devDependencies": {
     "@0no-co/graphqlsp": "^1.17.3",

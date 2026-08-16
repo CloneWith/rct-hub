@@ -182,7 +182,7 @@ export const adminBeatmaps = {
     restFetch("/beatmaps", { method: "POST", body: JSON.stringify(body) }),
 
   update: (id: string, body: Record<string, unknown>) =>
-    restFetch(`/beatmaps/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    restFetch(`/beatmaps/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   delete: (id: string) =>
     restFetch(`/beatmaps/${id}`, { method: "DELETE" }),
@@ -212,7 +212,7 @@ export const adminAnnouncements = {
     restFetch("/announcements", { method: "POST", body: JSON.stringify(body) }),
 
   update: (id: string, body: Record<string, unknown>) =>
-    restFetch(`/announcements/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    restFetch(`/announcements/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   delete: (id: string) =>
     restFetch(`/announcements/${id}`, { method: "DELETE" }),
@@ -245,6 +245,26 @@ export async function graphqlRequest<TResult, TVariables>(
     method: "POST",
     headers,
     body: JSON.stringify({ query: doc.toString(), variables }),
+  });
+  return res.json();
+}
+
+/**
+ * Server-only variant of `graphqlRequest`.
+ *
+ * Does not read `localStorage` (which is unavailable on the server) and instead
+ * sends a plain JSON request. Use this for public, server-rendered GraphQL
+ * reads such as the News feed.
+ */
+export async function serverGraphQLRequest<TResult, TVariables>(
+  doc: TypedDocumentString<TResult, TVariables>,
+  variables?: TVariables,
+): Promise<GraphQLResponse<TResult>> {
+  const res = await fetch(GRAPHQL_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: doc.toString(), variables }),
+    next: { revalidate: 60 },
   });
   return res.json();
 }
