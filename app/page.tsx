@@ -103,7 +103,7 @@ export default async function Home() {
                 </div>
               </Reveal>
               <Reveal delay={60}>
-                <h1 className="text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
+                <h1 className="font-serif-cjk text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
                   <span className="text-gradient-ember">在核冬天里</span>
                   <br />
                   <span className="text-gradient-snow">下一盘棋</span>
@@ -124,6 +124,56 @@ export default async function Home() {
             <Reveal delay={120} className="mx-auto w-full max-w-[560px]">
               <BoardShowcase />
             </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ 故事 ============ */}
+      <section className="relative overflow-hidden border-y border-border bg-ash/60">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(55% 50% at 50% 0%, rgba(238,193,90,0.06), transparent 60%)",
+          }}
+        />
+        <div className="relative mx-auto max-w-4xl px-6 py-24 sm:py-32">
+          <Reveal className="text-center">
+            <Eyebrow>背景故事</Eyebrow>
+            <h2 className="font-serif-cjk text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+              {STORY.title}
+            </h2>
+          </Reveal>
+
+          <Reveal delay={80} className="mt-12">
+            <div className="space-y-6 font-serif-cjk text-lg leading-9 text-foreground/90 sm:text-xl sm:leading-10">
+              {STORY.paragraphs.map((p, i) => (
+                <p key={i} className={i === 0 ? "first-letter:float-left first-letter:mr-3 first-letter:text-5xl first-letter:font-bold first-letter:leading-none first-letter:text-primary" : ""}>
+                  {p}
+                </p>
+              ))}
+            </div>
+            <p className="mt-10 text-center font-serif-cjk text-xl italic text-gold">
+              —— {STORY.tagline}
+            </p>
+          </Reveal>
+
+          <div className="mt-14 grid gap-6 sm:grid-cols-2">
+            {CHARACTERS.map((c, i) => (
+              <Reveal key={c.name} delay={i * 90}>
+                <div className="relative overflow-hidden rounded-2xl border border-border bg-surface/40 p-7">
+                  <div className="absolute inset-x-0 top-0 h-1" style={{ background: c.accent }} />
+                  <div className="flex items-baseline gap-3">
+                    <h3 className="text-2xl font-bold" style={{ color: c.accent }}>
+                      {c.name}
+                    </h3>
+                    <span className="text-sm text-muted-foreground">{c.age} 岁</span>
+                  </div>
+                  <p className="mt-1 text-sm font-medium text-muted-foreground">{c.trait}</p>
+                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{c.desc}</p>
+                </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
@@ -256,56 +306,6 @@ export default async function Home() {
           ))}
         </div>
       </Section>
-
-      {/* ============ 故事 ============ */}
-      <section className="relative overflow-hidden border-y border-border bg-ash/60">
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(55% 50% at 50% 0%, rgba(238,193,90,0.06), transparent 60%)",
-          }}
-        />
-        <div className="relative mx-auto max-w-4xl px-6 py-24 sm:py-32">
-          <Reveal className="text-center">
-            <Eyebrow>背景故事</Eyebrow>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              {STORY.title}
-            </h2>
-          </Reveal>
-
-          <Reveal delay={80} className="mt-12">
-            <div className="space-y-6 font-serif-cjk text-lg leading-9 text-foreground/90 sm:text-xl sm:leading-10">
-              {STORY.paragraphs.map((p, i) => (
-                <p key={i} className={i === 0 ? "first-letter:float-left first-letter:mr-3 first-letter:text-5xl first-letter:font-bold first-letter:leading-none first-letter:text-primary" : ""}>
-                  {p}
-                </p>
-              ))}
-            </div>
-            <p className="mt-10 text-center font-serif-cjk text-xl italic text-gold">
-              —— {STORY.tagline}
-            </p>
-          </Reveal>
-
-          <div className="mt-14 grid gap-6 sm:grid-cols-2">
-            {CHARACTERS.map((c, i) => (
-              <Reveal key={c.name} delay={i * 90}>
-                <div className="relative overflow-hidden rounded-2xl border border-border bg-surface/40 p-7">
-                  <div className="absolute inset-x-0 top-0 h-1" style={{ background: c.accent }} />
-                  <div className="flex items-baseline gap-3">
-                    <h3 className="text-2xl font-bold" style={{ color: c.accent }}>
-                      {c.name}
-                    </h3>
-                    <span className="text-sm text-muted-foreground">{c.age} 岁</span>
-                  </div>
-                  <p className="mt-1 text-sm font-medium text-muted-foreground">{c.trait}</p>
-                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{c.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ============ 奖品 ============ */}
       <Section
