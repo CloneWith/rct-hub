@@ -3,8 +3,8 @@ import { NewsList } from "./NewsList";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "News — RCT Hub",
-  description: "Latest announcements and posts from RCT Hub.",
+  title: "新闻与公告 — RCT S1",
+  description: "来自 RCT Staff 的最新消息！",
 };
 
 export const dynamic = "force-dynamic";
