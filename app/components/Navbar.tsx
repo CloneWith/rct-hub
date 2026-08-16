@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -40,6 +40,14 @@ export function Navbar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // The auth state depends on localStorage, which is unavailable during SSR.
+  // Render a placeholder during SSR / initial hydration, then switch to the
+  // real UI once the client has mounted to avoid hydration mismatches.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const isActive = (href: string) => pathname === href;
   const desktopClass = (active: boolean) =>
@@ -81,68 +89,72 @@ export function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          {user ? (
-            <Dropdown>
-              <Button variant="ghost" size="sm" className="flex items-center gap-2 px-2">
-                <Avatar size="sm" className="w-7 h-7">
-                  <Avatar.Image src={user.avatarUrl} alt={user.username} />
-                  <Avatar.Fallback>
-                    {user.username.slice(0, 2).toUpperCase()}
-                  </Avatar.Fallback>
-                </Avatar>
-                <span className="hidden sm:inline text-sm">{user.username}</span>
-                <ChevronDown className="w-4 h-4 opacity-50" />
-              </Button>
-              <Dropdown.Popover placement="bottom end">
-                <Dropdown.Menu>
-                  <Dropdown.Item id="profile" textValue="Profile" className="pointer-events-none">
-                    <div className="flex items-center gap-3 p-1">
-                      <Avatar size="md">
-                        <Avatar.Image src={user.avatarUrl} alt={user.username} />
-                        <Avatar.Fallback>{user.username.slice(0, 2).toUpperCase()}</Avatar.Fallback>
-                      </Avatar>
-                      <div>
-                        <Label>{user.username}</Label>
-                        <div className="flex gap-1 mt-1">
-                          {user.roles.map((r) => (
-                            <Chip key={r} size="sm" color={r === "ADMIN" ? "danger" : r === "REFEREE" ? "warning" : "accent"}>
-                              {r}
-                            </Chip>
-                          ))}
+          {mounted ? (
+            user ? (
+              <Dropdown>
+                <Button variant="ghost" size="sm" className="flex items-center gap-2 px-2">
+                  <Avatar size="sm" className="w-7 h-7">
+                    <Avatar.Image src={user.avatarUrl} alt={user.username} />
+                    <Avatar.Fallback>
+                      {user.username.slice(0, 2).toUpperCase()}
+                    </Avatar.Fallback>
+                  </Avatar>
+                  <span className="hidden sm:inline text-sm">{user.username}</span>
+                  <ChevronDown className="w-4 h-4 opacity-50" />
+                </Button>
+                <Dropdown.Popover placement="bottom end">
+                  <Dropdown.Menu>
+                    <Dropdown.Item id="profile" textValue="Profile" className="pointer-events-none">
+                      <div className="flex items-center gap-3 p-1">
+                        <Avatar size="md">
+                          <Avatar.Image src={user.avatarUrl} alt={user.username} />
+                          <Avatar.Fallback>{user.username.slice(0, 2).toUpperCase()}</Avatar.Fallback>
+                        </Avatar>
+                        <div>
+                          <Label>{user.username}</Label>
+                          <div className="flex gap-1 mt-1">
+                            {user.roles.map((r) => (
+                              <Chip key={r} size="sm" color={r === "ADMIN" ? "danger" : r === "REFEREE" ? "warning" : "accent"}>
+                                {r}
+                              </Chip>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Dropdown.Item>
-                  <Separator />
-                  {user.roles.includes("ADMIN") && (
-                    <Dropdown.Item id="admin" textValue="Admin Dashboard" href="/admin">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        <Label>管理后台</Label>
+                    </Dropdown.Item>
+                    <Separator />
+                    {user.roles.includes("ADMIN") && (
+                      <Dropdown.Item id="admin" textValue="Admin Dashboard" href="/admin">
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-4 h-4" />
+                          <Label>管理后台</Label>
+                        </div>
+                      </Dropdown.Item>
+                    )}
+                    <Dropdown.Item
+                      id="logout"
+                      textValue="Logout"
+                      onAction={() => logout()}
+                    >
+                      <div className="flex items-center gap-2 text-danger">
+                        <LogOut className="w-4 h-4" />
+                        <Label>退出登录</Label>
                       </div>
                     </Dropdown.Item>
-                  )}
-                  <Dropdown.Item
-                    id="logout"
-                    textValue="Logout"
-                    onAction={() => logout()}
-                  >
-                    <div className="flex items-center gap-2 text-danger">
-                      <LogOut className="w-4 h-4" />
-                      <Label>退出登录</Label>
-                    </div>
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown>
+            ) : (
+              <a href={getOsuLoginUrl()}>
+                <Button variant="primary" size="sm" className="gap-2">
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden sm:inline">使用 osu! 登录</span>
+                  <span className="sm:hidden">登录</span>
+                </Button>
+              </a>
+            )
           ) : (
-            <a href={getOsuLoginUrl()}>
-              <Button variant="primary" size="sm" className="gap-2">
-                <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">使用 osu! 登录</span>
-                <span className="sm:hidden">登录</span>
-              </Button>
-            </a>
+            <div className="h-8 w-24 animate-pulse rounded-md bg-muted sm:w-32" aria-hidden="true" />
           )}
 
           {/* Mobile menu toggle */}
