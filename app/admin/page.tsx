@@ -32,6 +32,8 @@ import {
   Pencil,
   Trash2,
   ArrowLeft,
+  ExternalLink,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import {
@@ -44,6 +46,7 @@ import {
   useCreateBeatmap,
   useUpdateBeatmap,
   useDeleteBeatmap,
+  useFetchBeatmapByOsuId,
   useCreateAnnouncement,
   useUpdateAnnouncement,
   useDeleteAnnouncement,
@@ -117,6 +120,7 @@ export default function AdminPage() {
   const createBm = useCreateBeatmap();
   const updateBm = useUpdateBeatmap();
   const deleteBm = useDeleteBeatmap();
+  const fetchBm = useFetchBeatmapByOsuId();
   const createAnn = useCreateAnnouncement();
   const updateAnn = useUpdateAnnouncement();
   const deleteAnn = useDeleteAnnouncement();
@@ -131,6 +135,9 @@ export default function AdminPage() {
   const [bmModal, setBmModal] = useState(false);
   const [bmEditId, setBmEditId] = useState<string | null>(null);
   const [bmF, setBmF] = useState(blankBm);
+  // Whether the "调整并确认信息" section is visible. In create mode it only
+  // expands after a successful "使用ID获取" fetch; in edit mode it starts open.
+  const [bmFetched, setBmFetched] = useState(false);
 
   const [annModal, setAnnModal] = useState(false);
   const [annEditId, setAnnEditId] = useState<string | null>(null);
@@ -200,6 +207,7 @@ export default function AdminPage() {
   const openBmCreate = () => {
     setBmEditId(null);
     setBmF(blankBm);
+    setBmFetched(false);
     setBmModal(true);
   };
 
@@ -214,7 +222,33 @@ export default function AdminPage() {
       status: b.status,
       modString: b.modString,
     });
+    setBmFetched(true);
     setBmModal(true);
+  };
+
+  // Pull beatmap metadata from the backend by osu! id. The backend fetcher
+  // (Redis → Mongo → osu! API) upserts the document on a cache miss, so the
+  // returned beatmap always has a database id — switch to patch mode to avoid
+  // a 409 on the subsequent POST create.
+  const fetchBmInfo = () => {
+    if (!bmF.onlineID) return;
+    fetchBm.mutate(bmF.onlineID, {
+      onSuccess: (b) => {
+        setBmF((p) => ({
+          onlineID: b.onlineID,
+          title: b.title ?? "",
+          artist: b.artist ?? "",
+          version: b.version ?? "",
+          difficultyRating: b.difficultyRating ?? 0,
+          status: STATUS_OPTIONS.includes(b.status) ? b.status : p.status,
+          modString: MOD_OPTIONS.includes(b.modString)
+            ? b.modString
+            : p.modString || "NM",
+        }));
+        setBmEditId(b.id);
+        setBmFetched(true);
+      },
+    });
   };
 
   const saveBm = () => {
@@ -482,6 +516,21 @@ export default function AdminPage() {
                               size="sm"
                               variant="ghost"
                               isIconOnly
+                              aria-label="View on osu! website"
+                              onPress={() =>
+                                window.open(
+                                  `https://osu.ppy.sh/beatmaps/${b.onlineID}`,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                )
+                              }
+                            >
+                              <ExternalLink className="w-4 h-4"/>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              isIconOnly
                               onPress={() => openBmEdit(b)}
                             >
                               <Pencil className="w-4 h-4"/>
@@ -701,113 +750,143 @@ export default function AdminPage() {
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
-                <div className="flex flex-col gap-4">
-                  <TextField>
-                    <Label>osu! Beatmap ID</Label>
-                    <Input
-                      type="number"
-                      value={String(bmF.onlineID)}
-                      onChange={(e) =>
-                        setBmF((p) => ({
-                          ...p,
-                          onlineID: Number(
-                            (e.target as HTMLInputElement).value,
-                          ),
-                        }))
-                      }
-                    />
-                  </TextField>
-                  <TextField>
-                    <Label>Title</Label>
-                    <Input
-                      value={bmF.title}
-                      onChange={(e) =>
-                        setBmF((p) => ({
-                          ...p,
-                          title: (e.target as HTMLInputElement).value,
-                        }))
-                      }
-                    />
-                  </TextField>
-                  <TextField>
-                    <Label>Artist</Label>
-                    <Input
-                      value={bmF.artist}
-                      onChange={(e) =>
-                        setBmF((p) => ({
-                          ...p,
-                          artist: (e.target as HTMLInputElement).value,
-                        }))
-                      }
-                    />
-                  </TextField>
-                  <TextField>
-                    <Label>Version (diff name)</Label>
-                    <Input
-                      value={bmF.version}
-                      onChange={(e) =>
-                        setBmF((p) => ({
-                          ...p,
-                          version: (e.target as HTMLInputElement).value,
-                        }))
-                      }
-                    />
-                  </TextField>
-                  <TextField>
-                    <Label>Star Rating</Label>
-                    <Input
-                      type="number"
-                      value={String(bmF.difficultyRating)}
-                      onChange={(e) =>
-                        setBmF((p) => ({
-                          ...p,
-                          difficultyRating: Number(
-                            (e.target as HTMLInputElement).value,
-                          ),
-                        }))
-                      }
-                    />
-                  </TextField>
-                  <Select
-                    selectedKey={bmF.modString}
-                    onSelectionChange={(v) =>
-                      setBmF((p) => ({...p, modString: v as string}))
-                    }
-                  >
-                    <Label>Mod</Label>
-                    <Select.Trigger>
-                      <Select.Value/>
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        {MOD_OPTIONS.map((m) => (
-                          <ListBox.Item key={m} id={m}>
-                            {m}
-                          </ListBox.Item>
-                        ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-                  <Select
-                    selectedKey={bmF.status}
-                    onSelectionChange={(v) =>
-                      setBmF((p) => ({...p, status: v as string}))
-                    }
-                  >
-                    <Label>Status</Label>
-                    <Select.Trigger>
-                      <Select.Value/>
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        {STATUS_OPTIONS.map((s) => (
-                          <ListBox.Item key={s} id={s}>
-                            {s}
-                          </ListBox.Item>
-                        ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
+                <div className="flex flex-col gap-5">
+                  {/* ---- Part 1: 使用ID获取 ---- */}
+                  <section className="flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold">使用ID获取</h3>
+                    <div className="flex items-end gap-2">
+                      <TextField className="flex-1">
+                        <Label>osu! Beatmap ID</Label>
+                        <Input
+                          type="number"
+                          value={String(bmF.onlineID)}
+                          disabled={bmEditId !== null}
+                          onChange={(e) =>
+                            setBmF((p) => ({
+                              ...p,
+                              onlineID: Number(
+                                (e.target as HTMLInputElement).value,
+                              ),
+                            }))
+                          }
+                        />
+                      </TextField>
+                      {!bmEditId && (
+                        <Button
+                          variant="secondary"
+                          onPress={fetchBmInfo}
+                          isDisabled={fetchBm.isPending || !bmF.onlineID}
+                        >
+                          <Search className="w-4 h-4"/>
+                          {fetchBm.isPending ? "获取中…" : "获取"}
+                        </Button>
+                      )}
+                    </div>
+                  </section>
+
+                  {/* ---- Part 2: 调整并确认信息 ---- */}
+                  <section className="flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold">调整并确认信息</h3>
+                    {bmFetched ? (
+                      <div className="flex flex-col gap-4">
+                        <TextField>
+                          <Label>Title</Label>
+                          <Input
+                            value={bmF.title}
+                            onChange={(e) =>
+                              setBmF((p) => ({
+                                ...p,
+                                title: (e.target as HTMLInputElement).value,
+                              }))
+                            }
+                          />
+                        </TextField>
+                        <TextField>
+                          <Label>Artist</Label>
+                          <Input
+                            value={bmF.artist}
+                            onChange={(e) =>
+                              setBmF((p) => ({
+                                ...p,
+                                artist: (e.target as HTMLInputElement).value,
+                              }))
+                            }
+                          />
+                        </TextField>
+                        <TextField>
+                          <Label>Version (diff name)</Label>
+                          <Input
+                            value={bmF.version}
+                            onChange={(e) =>
+                              setBmF((p) => ({
+                                ...p,
+                                version: (e.target as HTMLInputElement).value,
+                              }))
+                            }
+                          />
+                        </TextField>
+                        <TextField>
+                          <Label>Star Rating</Label>
+                          <Input
+                            type="number"
+                            value={String(bmF.difficultyRating)}
+                            onChange={(e) =>
+                              setBmF((p) => ({
+                                ...p,
+                                difficultyRating: Number(
+                                  (e.target as HTMLInputElement).value,
+                                ),
+                              }))
+                            }
+                          />
+                        </TextField>
+                        <Select
+                          selectedKey={bmF.modString}
+                          onSelectionChange={(v) =>
+                            setBmF((p) => ({...p, modString: v as string}))
+                          }
+                        >
+                          <Label>Mod</Label>
+                          <Select.Trigger>
+                            <Select.Value/>
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              {MOD_OPTIONS.map((m) => (
+                                <ListBox.Item key={m} id={m}>
+                                  {m}
+                                </ListBox.Item>
+                              ))}
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
+                        <Select
+                          selectedKey={bmF.status}
+                          onSelectionChange={(v) =>
+                            setBmF((p) => ({...p, status: v as string}))
+                          }
+                        >
+                          <Label>Status</Label>
+                          <Select.Trigger>
+                            <Select.Value/>
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              {STATUS_OPTIONS.map((s) => (
+                                <ListBox.Item key={s} id={s}>
+                                  {s}
+                                </ListBox.Item>
+                              ))}
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        输入 osu! 谱面 ID 并点击“获取”，拉取成功后可在此调整并确认谱面信息。
+                      </p>
+                    )}
+                  </section>
                 </div>
               </Modal.Body>
               <Modal.Footer>
@@ -817,7 +896,11 @@ export default function AdminPage() {
                 <Button
                   variant="primary"
                   onPress={saveBm}
-                  isDisabled={createBm.isPending || updateBm.isPending}
+                  isDisabled={
+                    !bmFetched ||
+                    createBm.isPending ||
+                    updateBm.isPending
+                  }
                 >
                   Save
                 </Button>

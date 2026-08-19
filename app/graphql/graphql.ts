@@ -87,6 +87,13 @@ export type BeatmapsQueryVariables = Exact<{
 
 export type BeatmapsQuery = { beatmaps: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, onlineID: number, title: string, artist: string, bpm: number, status: string, modString: string, modIndex: number, version: string, difficultyRating: number, coverUrl: string }> } };
 
+export type BeatmapByOsuIdQueryVariables = Exact<{
+  osuId: number;
+}>;
+
+
+export type BeatmapByOsuIdQuery = { beatmapByOsuId: { id: string, onlineID: number, title: string, artist: string, bpm: number, status: string, modString: string, modIndex: number, version: string, difficultyRating: number, coverUrl: string } | null };
+
 export class TypedDocumentString<TResult, TVariables>
   extends String
   implements DocumentTypeDecoration<TResult, TVariables>
@@ -240,3 +247,20 @@ export const BeatmapsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<BeatmapsQuery, BeatmapsQueryVariables>;
+export const BeatmapByOsuIdDocument = new TypedDocumentString(`
+    query BeatmapByOsuId($osuId: Int!) {
+  beatmapByOsuId(osuId: $osuId) {
+    id
+    onlineID
+    title
+    artist
+    version: difficultyName
+    difficultyRating: starRating
+    bpm
+    status
+    modString
+    modIndex
+    coverUrl: coverURL
+  }
+}
+    `) as unknown as TypedDocumentString<BeatmapByOsuIdQuery, BeatmapByOsuIdQueryVariables>;

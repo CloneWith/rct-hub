@@ -21,6 +21,7 @@ type Documents = {
     "\n  query Matches($status: MatchStatus, $page: Int, $perPage: Int) {\n    matches(status: $status, page: $page, perPage: $perPage) {\n      items {\n        id\n        code\n        name\n        status\n        roomType\n        startedAt\n        turnState {\n          phase\n          activeTeam\n        }\n      }\n      page\n      perPage\n      total\n      totalPages\n    }\n  }\n": typeof types.MatchesDocument,
     "\n  query Announcements($page: Int, $perPage: Int) {\n    announcements(page: $page, perPage: $perPage) {\n      items {\n        id\n        pinned\n        visible\n        title\n        content\n        author {\n          id\n          onlineID\n          username\n          avatarUrl: avatarURL\n        }\n        publishedAt\n        createdAt\n      }\n      page\n      perPage\n      total\n      totalPages\n    }\n  }\n": typeof types.AnnouncementsDocument,
     "\n  query Beatmaps($page: Int, $perPage: Int) {\n    beatmaps(page: $page, perPage: $perPage) {\n      items {\n        id\n        onlineID\n        title\n        artist\n        version: difficultyName\n        difficultyRating: starRating\n        bpm\n        status\n        modString\n        modIndex\n        coverUrl: coverURL\n      }\n      page\n      perPage\n      total\n      totalPages\n    }\n  }\n": typeof types.BeatmapsDocument,
+    "\n  query BeatmapByOsuId($osuId: Int!) {\n    beatmapByOsuId(osuId: $osuId) {\n      id\n      onlineID\n      title\n      artist\n      version: difficultyName\n      difficultyRating: starRating\n      bpm\n      status\n      modString\n      modIndex\n      coverUrl: coverURL\n    }\n  }\n": typeof types.BeatmapByOsuIdDocument,
 };
 const documents: Documents = {
     "\n  query Me {\n    me {\n      id\n      onlineID\n      username\n      avatarUrl: avatarURL\n      countryCode\n      roles\n      verifyStatus\n      isBanned\n      globalRank\n      pp\n    }\n  }\n": types.MeDocument,
@@ -29,6 +30,7 @@ const documents: Documents = {
     "\n  query Matches($status: MatchStatus, $page: Int, $perPage: Int) {\n    matches(status: $status, page: $page, perPage: $perPage) {\n      items {\n        id\n        code\n        name\n        status\n        roomType\n        startedAt\n        turnState {\n          phase\n          activeTeam\n        }\n      }\n      page\n      perPage\n      total\n      totalPages\n    }\n  }\n": types.MatchesDocument,
     "\n  query Announcements($page: Int, $perPage: Int) {\n    announcements(page: $page, perPage: $perPage) {\n      items {\n        id\n        pinned\n        visible\n        title\n        content\n        author {\n          id\n          onlineID\n          username\n          avatarUrl: avatarURL\n        }\n        publishedAt\n        createdAt\n      }\n      page\n      perPage\n      total\n      totalPages\n    }\n  }\n": types.AnnouncementsDocument,
     "\n  query Beatmaps($page: Int, $perPage: Int) {\n    beatmaps(page: $page, perPage: $perPage) {\n      items {\n        id\n        onlineID\n        title\n        artist\n        version: difficultyName\n        difficultyRating: starRating\n        bpm\n        status\n        modString\n        modIndex\n        coverUrl: coverURL\n      }\n      page\n      perPage\n      total\n      totalPages\n    }\n  }\n": types.BeatmapsDocument,
+    "\n  query BeatmapByOsuId($osuId: Int!) {\n    beatmapByOsuId(osuId: $osuId) {\n      id\n      onlineID\n      title\n      artist\n      version: difficultyName\n      difficultyRating: starRating\n      bpm\n      status\n      modString\n      modIndex\n      coverUrl: coverURL\n    }\n  }\n": types.BeatmapByOsuIdDocument,
 };
 
 /**
@@ -55,6 +57,10 @@ export function graphql(source: "\n  query Announcements($page: Int, $perPage: I
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query Beatmaps($page: Int, $perPage: Int) {\n    beatmaps(page: $page, perPage: $perPage) {\n      items {\n        id\n        onlineID\n        title\n        artist\n        version: difficultyName\n        difficultyRating: starRating\n        bpm\n        status\n        modString\n        modIndex\n        coverUrl: coverURL\n      }\n      page\n      perPage\n      total\n      totalPages\n    }\n  }\n"): typeof import('./graphql').BeatmapsDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query BeatmapByOsuId($osuId: Int!) {\n    beatmapByOsuId(osuId: $osuId) {\n      id\n      onlineID\n      title\n      artist\n      version: difficultyName\n      difficultyRating: starRating\n      bpm\n      status\n      modString\n      modIndex\n      coverUrl: coverURL\n    }\n  }\n"): typeof import('./graphql').BeatmapByOsuIdDocument;
 
 
 export function graphql(source: string) {

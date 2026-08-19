@@ -291,6 +291,30 @@ export function useBeatmaps(enabled = true) {
   return { data: data ?? [], isLoading };
 }
 
+/** Beatmap fetched by osu! id (from `BeatmapByOsuIdQuery`). */
+export type FetchedBeatmap = NonNullable<BeatmapByOsuIdQuery["beatmapByOsuId"]>;
+
+/**
+ * Fetch beatmap metadata by osu! beatmap id. The backend resolver uses the
+ * 3-tier fetcher (Redis → Mongo → osu! API): a cache miss pulls the map from
+ * the osu! API and upserts the document, so the returned beatmap always has
+ * a database `id` — subsequent saves should go through PATCH, not POST.
+ */
+export function useFetchBeatmapByOsuId() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: async (osuId: number): Promise<FetchedBeatmap> => {
+      const res = await graphqlRequest(BeatmapByOsuIdDocument, { osuId });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      const beatmap = res.data?.beatmapByOsuId;
+      if (!beatmap) throw new Error("Beatmap not found");
+      return beatmap;
+    },
+    // A cold fetch upserts the beatmap document, so the admin list may change.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
+  });
+}
+
 export function useCreateBeatmap() {
   const qc = useQueryClient();
   return useToastedMutation({

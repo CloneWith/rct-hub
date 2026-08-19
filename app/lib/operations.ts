@@ -174,3 +174,26 @@ export const BeatmapsDocument = graphql(`
     }
   }
 `);
+
+/**
+ * Fetch a beatmap by its osu! beatmap id. The backend resolver goes through
+ * the 3-tier fetcher (Redis → Mongo → osu! API), so a cache miss triggers a
+ * live osu! API pull and upserts the document before returning it.
+ */
+export const BeatmapByOsuIdDocument = graphql(`
+  query BeatmapByOsuId($osuId: Int!) {
+    beatmapByOsuId(osuId: $osuId) {
+      id
+      onlineID
+      title
+      artist
+      version: difficultyName
+      difficultyRating: starRating
+      bpm
+      status
+      modString
+      modIndex
+      coverUrl: coverURL
+    }
+  }
+`);
