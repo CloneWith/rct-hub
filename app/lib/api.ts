@@ -18,26 +18,19 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 const API_PREFIX = `${API_BASE}/api/v1`;
 const GRAPHQL_URL = `${API_BASE}/graphql`;
 
-// ---------------------------------------------------------------------------
-// Token helpers
-// ---------------------------------------------------------------------------
+/**
+ * The backend issues the session as an opaque, HttpOnly cookie named
+ * `rcthub_session` (Path=/, SameSite=Lax). The browser sends it automatically,
+ * but because the API lives on a different origin than the frontend, every
+ * request must opt in with `credentials: "include"`.
+ */
+const CREDENTIALS: RequestCredentials = "include";
 
-export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("rcthub_token");
-}
-
-export function saveToken(token: string): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("rcthub_token", token);
-  }
-}
-
-export function clearToken(): void {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("rcthub_token");
-  }
-}
+/**
+ * Logout endpoint lives on the backend root (not under /api/v1) and clears the
+ * HttpOnly cookie server-side — JS cannot delete HttpOnly cookies itself.
+ */
+const LOGOUT_URL = `${API_BASE}/auth/logout`;
 
 // ---------------------------------------------------------------------------
 // User profile cache — eliminates SSR hydration flicker
@@ -75,15 +68,12 @@ export function clearCachedUser(): void {
   }
 }
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const token = getToken();
-  const headers: Record<string, string> = {
+function authHeaders(): Record<string, string> {
+  // Authentication is carried by the cookie, so no
+  // Authorization header is needed.
+  return {
     "Content-Type": "application/json",
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
 }
 
 // ---------------------------------------------------------------------------
@@ -101,8 +91,8 @@ export async function restFetch<T>(
   options: RequestInit = {},
 ): Promise<RestResponse<T>> {
   const url = path.startsWith("http") ? path : `${API_PREFIX}${path}`;
-  const headers = { ...(await authHeaders()), ...((options.headers as Record<string, string>) || {}) };
-  const res = await fetch(url, { ...options, headers });
+  const headers = { ...authHeaders(), ...((options.headers as Record<string, string>) || {}) };
+  const res = await fetch(url, { ...options, headers, credentials: CREDENTIALS });
 
   if (res.status === 204) {
     return { success: true };
@@ -125,22 +115,12 @@ export function getOsuLoginUrl(): string {
   return `${API_BASE}/auth/osu?redirect_uri=${redirectUri}`;
 }
 
-export function logout(): void {
-  clearToken();
-}
-
 /**
- * Call this from the /auth/callback page. Expects `?token=<jwt>`.
+ * Ends the server-side session: revokes the opaque session in Redis and clears
+ * the cookie. Callers should clear local auth state afterward.
  */
-export function handleAuthCallback(): boolean {
-  if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
-  if (token) {
-    saveToken(token);
-    return true;
-  }
-  return false;
+export async function logoutSession(): Promise<void> {
+  await fetch(LOGOUT_URL, { method: "POST", credentials: CREDENTIALS });
 }
 
 // ---------------------------------------------------------------------------
@@ -240,10 +220,11 @@ export async function graphqlRequest<TResult, TVariables>(
   doc: TypedDocumentString<TResult, TVariables>,
   variables?: TVariables,
 ): Promise<GraphQLResponse<TResult>> {
-  const headers = await authHeaders();
+  const headers = authHeaders();
   const res = await fetch(GRAPHQL_URL, {
     method: "POST",
     headers,
+    credentials: CREDENTIALS,
     body: JSON.stringify({ query: doc.toString(), variables }),
   });
   return res.json();

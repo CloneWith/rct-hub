@@ -40,9 +40,9 @@ export function Navbar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  // The auth state depends on localStorage, which is unavailable during SSR.
-  // Render a placeholder during SSR / initial hydration, then switch to the
-  // real UI once the client has mounted to avoid hydration mismatches.
+  // Auth state comes from the cookie, which is unknown during SSR.
+  // Render a placeholder during SSR / initial hydration, then switch to
+  // the real UI once the client has mounted to avoid hydration mismatches.
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,

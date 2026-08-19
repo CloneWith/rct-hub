@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { saveToken, clearToken, clearCachedUser, setCachedUser, graphqlRequest } from "@/app/lib/api";
+import { logoutSession, clearCachedUser, setCachedUser, graphqlRequest } from "@/app/lib/api";
 import { MeDocument } from "@/app/lib/operations";
 import { useMe, type AuthUser } from "@/app/lib/hooks";
 
@@ -18,8 +18,9 @@ import { useMe, type AuthUser } from "@/app/lib/hooks";
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (token: string) => Promise<void>;
-  logout: () => void;
+  /** Verifies the browser session cookie and hydrates the user profile. */
+  login: () => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,20 +46,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: user, isLoading: loading } = useMe();
 
   const login = useCallback(
-    async (token: string) => {
-      saveToken(token);
-      const data = await queryClient.fetchQuery({
-        queryKey: ["me"],
-        queryFn: async () => {
-          const res = await graphqlRequest(MeDocument);
-          if (res.errors?.length) throw new Error(res.errors[0].message);
-          return res.data?.me ?? null;
-        },
-        staleTime: 5 * 60 * 1000,
-      });
-      // Persist a lightweight profile so the next page refresh shows the
-      // avatar / name immediately (no flicker).
-      if (data) {
+    async (): Promise<boolean> => {
+      try {
+        const data = await queryClient.fetchQuery({
+          queryKey: ["me"],
+          queryFn: async () => {
+            const res = await graphqlRequest(MeDocument);
+            if (res.errors?.length) throw new Error(res.errors[0].message);
+            return res.data?.me ?? null;
+          },
+          staleTime: 5 * 60 * 1000,
+        });
+        if (!data) {
+          // No usable session cookie (expired / revoked / missing).
+          clearCachedUser();
+          return false;
+        }
+        // Persist a lightweight profile so the next page refresh shows the
+        // avatar / name immediately (no flicker).
         setCachedUser({
           id: data.id,
           onlineID: data.onlineID,
@@ -66,13 +71,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatarUrl: data.avatarUrl,
           roles: data.roles as unknown as string[],
         });
+        return true;
+      } catch {
+        clearCachedUser();
+        return false;
       }
     },
     [queryClient],
   );
 
-  const logout = useCallback(() => {
-    clearToken();
+  const logout = useCallback(async () => {
+    try {
+      // Revoke the server-side session and clear the HttpOnly cookie.
+      await logoutSession();
+    } catch {
+      // If the backend is unreachable we still drop local auth state below.
+    }
     clearCachedUser();
     queryClient.setQueryData(["me"], null);
     queryClient.invalidateQueries({ queryKey: ["me"] });

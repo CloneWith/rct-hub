@@ -11,9 +11,8 @@ import {
 import {
   graphqlRequest,
   restFetch,
-  getToken,
-  clearToken,
   getCachedUser,
+  clearCachedUser,
   type RestResponse,
   type GraphQLResponse,
 } from "./api";
@@ -21,6 +20,7 @@ import {
   MeDocument,
   UsersDocument,
   BeatmapsDocument,
+  BeatmapByOsuIdDocument,
   AnnouncementsDocument,
 } from "@/app/lib/operations";
 import { toast } from "@heroui/react";
@@ -28,6 +28,7 @@ import type {
   MeQuery,
   UsersQuery,
   BeatmapsQuery,
+  BeatmapByOsuIdQuery,
   AnnouncementsQuery,
 } from "@/app/graphql/graphql";
 import type { UserRole, VerifyStatus } from "@/app/graphql/graphql";
@@ -137,12 +138,17 @@ export function useMe() {
     queryFn: async () => {
       const data = unwrap(await graphqlRequest(MeDocument));
       if (!data.me) {
-        clearToken();
+        // No valid session cookie (or the session expired/revoked).
+        // `me` returns null rather than an error, so treat it as signed out
+        // and drop any stale cached profile.
+        clearCachedUser();
         return null;
       }
       return data.me;
     },
-    enabled: typeof window !== "undefined" && !!getToken(),
+    // The session is an HttpOnly cookie, which JS cannot detect — the query
+    // must run on every mount and let the response decide the auth state.
+    enabled: typeof window !== "undefined",
     placeholderData: cached
       ? (): AuthUser | null => ({
           ...({ ...cached, roles: cached.roles as unknown as AuthUser["roles"] }),
