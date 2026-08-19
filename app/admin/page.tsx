@@ -65,21 +65,6 @@ const MOD_OPTIONS = ["NM", "HD", "HR", "DT", "FM", "Shiro", "TB"];
 const STATUS_OPTIONS = ["ranked", "loved", "qualified", "graveyard"];
 
 // ---- helpers ----
-function chipColor(role: string) {
-  switch (role) {
-    case "ADMIN":
-      return "danger" as const;
-    case "REFEREE":
-      return "warning" as const;
-    case "STRATEGIST":
-      return "accent" as const;
-    case "STREAMER":
-      return "success" as const;
-    default:
-      return "default" as const;
-  }
-}
-
 // ---- empty beatmap form ----
 const blankBm = {
   onlineID: 0,
@@ -95,7 +80,7 @@ const blankAnn = {title: "", content: "", pinned: false};
 
 export default function AdminPage() {
   const router = useRouter();
-  const {user} = useAuth();
+  const {user, loading} = useAuth();
   const isAdmin = user?.roles.includes("ADMIN") ?? false;
   const [activeTab, setActiveTab] = useState("users");
 
@@ -310,7 +295,10 @@ export default function AdminPage() {
   };
 
   // ---- Loading / access denied ----
-  if (!user)
+  // Only show the spinner while the auth query is in-flight. Once it
+  // resolves, a null user (not logged in) should fall through to the
+  // !isAdmin branch and show the same "access denied" UI as a non-admin.
+  if (loading)
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Spinner size="lg"/>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import {
   useQuery,
   useMutation,
@@ -62,6 +62,26 @@ function unwrap<T>(res: { data?: T; errors?: Array<{ message: string }> }): T {
 function throwOnRestError<T>(res: RestResponse<T>): T {
   if (!res.success) throw new Error(res.error ?? "Request failed");
   return res.data as T;
+}
+
+/**
+ * Returns `true` only after the component has hydrated on the client.
+ *
+ * The server render and the client's hydration render both observe `false`;
+ * after hydration the client re-renders with `true`. Use this to gate
+ * browser-only logic (localStorage, window, enabling queries) without
+ * causing hydration mismatches.
+ *
+ * Implemented via `useSyncExternalStore` (React-recommended) rather than
+ * `useState` + `useEffect(setState)`, which triggers cascading-renders
+ * ESLint warnings.
+ */
+export function useIsClient() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 }
 
 /**
@@ -131,9 +151,16 @@ function useToastedMutation<TData, TError = Error, TVariables = unknown, TContex
 // =========================================================================
 
 export function useMe() {
-  const cached = typeof window !== "undefined" ? getCachedUser() : null;
+  // Gate on hydration (not `typeof window !== "undefined"`) so that the
+  // server render and client hydration produce identical query state.
+  // Reading `localStorage` or enabling the query during SSR would cause a
+  // hydration mismatch because the client's first render already has access
+  // to `window` / `localStorage` while the server does not.
+  const isClient = useIsClient();
 
-  return useQuery({
+  const cached = isClient ? getCachedUser() : null;
+
+  const query = useQuery({
     queryKey: ["me"],
     queryFn: async () => {
       const data = unwrap(await graphqlRequest(MeDocument));
@@ -148,7 +175,7 @@ export function useMe() {
     },
     // The session is an HttpOnly cookie, which JS cannot detect — the query
     // must run on every mount and let the response decide the auth state.
-    enabled: typeof window !== "undefined",
+    enabled: isClient,
     placeholderData: cached
       ? (): AuthUser | null => ({
           ...({ ...cached, roles: cached.roles as unknown as AuthUser["roles"] }),
@@ -162,6 +189,14 @@ export function useMe() {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+
+  // Treat "not yet hydrated" as loading so consumers show a spinner instead
+  // of rendering auth-dependent content that would mismatch between server
+  // and client during hydration.
+  return {
+    ...query,
+    isLoading: !isClient || query.isLoading,
+  };
 }
 
 // =========================================================================

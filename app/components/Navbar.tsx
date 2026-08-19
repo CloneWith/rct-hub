@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -26,6 +26,7 @@ import {
   Gift,
 } from "lucide-react";
 import { getOsuLoginUrl } from "@/app/lib/api";
+import { useIsClient } from "@/app/lib/hooks";
 import { useAuth } from "@/app/context/AuthContext";
 
 const navLinks = [
@@ -43,11 +44,7 @@ export function Navbar() {
   // Auth state comes from the cookie, which is unknown during SSR.
   // Render a placeholder during SSR / initial hydration, then switch to
   // the real UI once the client has mounted to avoid hydration mismatches.
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+  const isClient = useIsClient();
 
   const isActive = (href: string) => pathname === href;
   const desktopClass = (active: boolean) =>
@@ -89,7 +86,7 @@ export function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          {mounted ? (
+          {isClient ? (
             user ? (
               <Dropdown>
                 <Button variant="ghost" size="sm" className="flex items-center gap-2 px-2">
