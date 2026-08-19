@@ -33,7 +33,7 @@ import {
   Trash2,
   ArrowLeft,
   ExternalLink,
-  Search,
+  Search, ShieldQuestion,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import {
@@ -308,17 +308,17 @@ export default function AdminPage() {
   if (!isAdmin)
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6">
-        <Shield className="w-16 h-16 text-muted-foreground/30"/>
-        <h1 className="text-2xl font-bold">Access Denied</h1>
+        <ShieldQuestion className="w-16 h-16 text-muted-foreground/30"/>
+        <h1 className="text-2xl font-bold">...不熟</h1>
         <p className="text-muted-foreground">
-          You need admin privileges to access this page.
+          需要管理员权限才能访问。
         </p>
         <Button
           variant="secondary"
           onPress={() => router.push("/")}
         >
           <ArrowLeft className="w-4 h-4"/>
-          Back to Home
+          返回主页
         </Button>
       </div>
     );
@@ -329,9 +329,9 @@ export default function AdminPage() {
       <div className="flex items-center gap-4 mb-8">
         <Shield className="w-8 h-8 text-primary"/>
         <div>
-          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold">管理后台</h1>
           <p className="text-sm text-muted-foreground">
-            Manage users, beatmaps, and announcements.
+            管理房间、用户、图池与公告。
           </p>
         </div>
       </div>
@@ -345,17 +345,17 @@ export default function AdminPage() {
           <Tabs.List>
             <Tabs.Tab id="users">
               <Users className="w-4 h-4 inline mr-1.5"/>
-              Users
+              用户
               <Tabs.Indicator/>
             </Tabs.Tab>
             <Tabs.Tab id="beatmaps">
               <Music className="w-4 h-4 inline mr-1.5"/>
-              Beatmaps
+              谱面
               <Tabs.Indicator/>
             </Tabs.Tab>
             <Tabs.Tab id="announcements">
               <Megaphone className="w-4 h-4 inline mr-1.5"/>
-              Announcements
+              公告
               <Tabs.Indicator/>
             </Tabs.Tab>
           </Tabs.List>
@@ -372,11 +372,11 @@ export default function AdminPage() {
               <Table.ScrollContainer>
                 <Table.Content aria-label="Users">
                   <Table.Header>
-                    <Table.Column isRowHeader={true}>User</Table.Column>
-                    <Table.Column>Roles</Table.Column>
-                    <Table.Column>Verify</Table.Column>
-                    <Table.Column>Banned</Table.Column>
-                    <Table.Column>Actions</Table.Column>
+                    <Table.Column isRowHeader={true}>用户</Table.Column>
+                    <Table.Column>角色</Table.Column>
+                    <Table.Column>认证</Table.Column>
+                    <Table.Column>封禁状态</Table.Column>
+                    <Table.Column>操作</Table.Column>
                   </Table.Header>
                   <Table.Body>
                     {users.map((u) => (
@@ -432,7 +432,7 @@ export default function AdminPage() {
                               onPress={() => toggleBan(u)}
                               isDisabled={banningUserId === u.id}
                             >
-                              {u.isBanned ? "Unban" : "Ban"}
+                              {u.isBanned ? "解禁" : "禁用"}
                             </Button>
                           </div>
                         </Table.Cell>
@@ -450,7 +450,7 @@ export default function AdminPage() {
           <div className="flex justify-end mb-4">
             <Button variant="primary" size="sm" onPress={openBmCreate}>
               <Plus className="w-4 h-4"/>
-              Add Beatmap
+              新谱面
             </Button>
           </div>
           {beatmapsLoading ? (
@@ -462,11 +462,11 @@ export default function AdminPage() {
               <Table.ScrollContainer>
                 <Table.Content aria-label="Beatmaps">
                   <Table.Header>
-                    <Table.Column isRowHeader={true}>Beatmap</Table.Column>
-                    <Table.Column>Difficulty</Table.Column>
-                    <Table.Column>Mod</Table.Column>
-                    <Table.Column>Status</Table.Column>
-                    <Table.Column>Actions</Table.Column>
+                    <Table.Column isRowHeader={true}>谱面</Table.Column>
+                    <Table.Column>难度</Table.Column>
+                    <Table.Column>分类</Table.Column>
+                    <Table.Column>状态</Table.Column>
+                    <Table.Column>操作</Table.Column>
                   </Table.Header>
                   <Table.Body>
                     {beatmaps.map((b) => (
@@ -504,7 +504,7 @@ export default function AdminPage() {
                               size="sm"
                               variant="ghost"
                               isIconOnly
-                              aria-label="View on osu! website"
+                              aria-label="在官网显示"
                               onPress={() =>
                                 window.open(
                                   `https://osu.ppy.sh/beatmaps/${b.onlineID}`,
@@ -547,7 +547,7 @@ export default function AdminPage() {
           <div className="flex justify-end mb-4">
             <Button variant="primary" size="sm" onPress={openAnnCreate}>
               <Plus className="w-4 h-4"/>
-              New Announcement
+              新公告
             </Button>
           </div>
           {annsLoading ? (
@@ -559,18 +559,18 @@ export default function AdminPage() {
               <Table.ScrollContainer>
                 <Table.Content aria-label="Announcements">
                   <Table.Header>
-                    <Table.Column isRowHeader={true}>Visible</Table.Column>
-                    <Table.Column isRowHeader={true}>Title</Table.Column>
-                    <Table.Column>Pinned</Table.Column>
-                    <Table.Column>Published</Table.Column>
-                    <Table.Column>Actions</Table.Column>
+                    <Table.Column isRowHeader={true}>可见</Table.Column>
+                    <Table.Column isRowHeader={true}>标题</Table.Column>
+                    <Table.Column>已固定</Table.Column>
+                    <Table.Column>发布于</Table.Column>
+                    <Table.Column>操作</Table.Column>
                   </Table.Header>
                   <Table.Body>
                     {anns.map((a) => (
                       <Table.Row key={a.id}>
                         <Table.Cell>
                           <Switch
-                            aria-label="Set this announcement visible"
+                            aria-label="使公告对外可见"
                             isSelected={a.visible}
                             onChange={v => setAnnVisibility(a, v)}
                           >
@@ -621,7 +621,7 @@ export default function AdminPage() {
                                 variant="ghost"
                                 onPress={() => pubAnn(a.id)}
                               >
-                                Publish
+                                发布
                               </Button>
                             )}
                             <Button
@@ -659,7 +659,7 @@ export default function AdminPage() {
                   <Pencil className="size-5"/>
                 </Modal.Icon>
                 <Modal.Heading>
-                  Edit User: {userById(editUserId ?? "")?.username}
+                  编辑用户 {userById(editUserId ?? "")?.username}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
@@ -669,8 +669,8 @@ export default function AdminPage() {
                       value={editRoles}
                       onChange={(v) => setEditRoles(v as string[])}
                     >
-                      <Label>Roles</Label>
-                      <Description>Select roles for this user.</Description>
+                      <Label>角色</Label>
+                      <Description>为用户分配角色。</Description>
                       {ROLE_OPTIONS.map((role) => (
                         <Checkbox key={role} value={role}>
                           <Checkbox.Content>
@@ -688,7 +688,7 @@ export default function AdminPage() {
                       selectedKey={editVerifyStatus}
                       onSelectionChange={(v) => setEditVerifyStatus(v as string)}
                     >
-                      <Label>Verify Status</Label>
+                      <Label>验证状态</Label>
                       <Select.Trigger>
                         <Select.Value/>
                       </Select.Trigger>
@@ -707,14 +707,14 @@ export default function AdminPage() {
               </Modal.Body>
               <Modal.Footer>
                 <Button variant="ghost" onPress={() => setEditUserId(null)}>
-                  Cancel
+                  取消
                 </Button>
                 <Button
                   variant="primary"
                   onPress={saveUser}
                   isDisabled={updateRoles.isPending || setVerify.isPending}
                 >
-                  Save
+                  保存
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
@@ -734,7 +734,7 @@ export default function AdminPage() {
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
-                  {bmEditId ? "Edit Beatmap" : "Add Beatmap"}
+                  {bmEditId ? "编辑谱面" : "新谱面"}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
@@ -744,7 +744,7 @@ export default function AdminPage() {
                     <h3 className="text-sm font-semibold">使用ID获取</h3>
                     <div className="flex items-end gap-2">
                       <TextField className="flex-1">
-                        <Label>osu! Beatmap ID</Label>
+                        <Label>谱面 ID</Label>
                         <Input
                           type="number"
                           value={String(bmF.onlineID)}
@@ -766,7 +766,7 @@ export default function AdminPage() {
                           isDisabled={fetchBm.isPending || !bmF.onlineID}
                         >
                           <Search className="w-4 h-4"/>
-                          {fetchBm.isPending ? "获取中…" : "获取"}
+                          {fetchBm.isPending ? "获取中..." : "获取"}
                         </Button>
                       )}
                     </div>
@@ -778,7 +778,7 @@ export default function AdminPage() {
                     {bmFetched ? (
                       <div className="flex flex-col gap-4">
                         <TextField>
-                          <Label>Title</Label>
+                          <Label>标题</Label>
                           <Input
                             value={bmF.title}
                             onChange={(e) =>
@@ -790,7 +790,7 @@ export default function AdminPage() {
                           />
                         </TextField>
                         <TextField>
-                          <Label>Artist</Label>
+                          <Label>艺术家</Label>
                           <Input
                             value={bmF.artist}
                             onChange={(e) =>
@@ -802,7 +802,7 @@ export default function AdminPage() {
                           />
                         </TextField>
                         <TextField>
-                          <Label>Version (diff name)</Label>
+                          <Label>难度名</Label>
                           <Input
                             value={bmF.version}
                             onChange={(e) =>
@@ -814,7 +814,7 @@ export default function AdminPage() {
                           />
                         </TextField>
                         <TextField>
-                          <Label>Star Rating</Label>
+                          <Label>星数评价</Label>
                           <Input
                             type="number"
                             value={String(bmF.difficultyRating)}
@@ -834,7 +834,7 @@ export default function AdminPage() {
                             setBmF((p) => ({...p, modString: v as string}))
                           }
                         >
-                          <Label>Mod</Label>
+                          <Label>图池分类</Label>
                           <Select.Trigger>
                             <Select.Value/>
                           </Select.Trigger>
@@ -854,7 +854,7 @@ export default function AdminPage() {
                             setBmF((p) => ({...p, status: v as string}))
                           }
                         >
-                          <Label>Status</Label>
+                          <Label>状态</Label>
                           <Select.Trigger>
                             <Select.Value/>
                           </Select.Trigger>
@@ -871,7 +871,7 @@ export default function AdminPage() {
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        输入 osu! 谱面 ID 并点击“获取”，拉取成功后可在此调整并确认谱面信息。
+                        请先输入 osu! 谱面 ID（注意不是谱面集 ID），以获取基本信息。
                       </p>
                     )}
                   </section>
@@ -879,7 +879,7 @@ export default function AdminPage() {
               </Modal.Body>
               <Modal.Footer>
                 <Button variant="ghost" onPress={() => setBmModal(false)}>
-                  Cancel
+                  取消
                 </Button>
                 <Button
                   variant="primary"
@@ -890,7 +890,7 @@ export default function AdminPage() {
                     updateBm.isPending
                   }
                 >
-                  Save
+                  保存
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
@@ -910,13 +910,13 @@ export default function AdminPage() {
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
-                  {annEditId ? "Edit Announcement" : "New Announcement"}
+                  {annEditId ? "编辑公告" : "新公告"}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
                 <div className="flex flex-col gap-4">
                   <TextField>
-                    <Label>Title</Label>
+                    <Label>标题</Label>
                     <Input
                       value={annF.title}
                       onChange={(e) =>
@@ -928,7 +928,7 @@ export default function AdminPage() {
                     />
                   </TextField>
                   <TextField>
-                    <Label>Content</Label>
+                    <Label>内容</Label>
                     <TextArea
                       rows={5}
                       value={annF.content}
@@ -945,7 +945,7 @@ export default function AdminPage() {
                     onChange={(v) => setAnnF((p) => ({...p, pinned: v}))}
                   >
                     <Switch.Content>
-                      Pinned to top
+                      置顶
                       <Switch.Control>
                         <Switch.Thumb/>
                       </Switch.Control>
@@ -955,14 +955,14 @@ export default function AdminPage() {
               </Modal.Body>
               <Modal.Footer>
                 <Button variant="ghost" onPress={() => setAnnModal(false)}>
-                  Cancel
+                  取消
                 </Button>
                 <Button
                   variant="primary"
                   onPress={saveAnn}
                   isDisabled={createAnn.isPending || updateAnn.isPending}
                 >
-                  Save
+                  保存
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
@@ -983,14 +983,14 @@ export default function AdminPage() {
               <AlertDialog.Header>
                 <AlertDialog.Icon status="danger"/>
                 <AlertDialog.Heading>
-                  Delete {deleteTarget?.type === "beatmap" ? "Beatmap" : "Announcement"}
+                  删除 {deleteTarget?.type === "beatmap" ? "谱面" : "公告"}
                 </AlertDialog.Heading>
               </AlertDialog.Header>
               <AlertDialog.Body>
                 <p>
-                  Are you sure you want to delete{" "}
-                  <span className="font-medium">{deleteTarget?.title}</span>?
-                  This action cannot be undone.
+                  确定要删除{" "}
+                  <span className="font-medium">{deleteTarget?.title}</span>？
+                  该操作无法撤销。
                 </p>
               </AlertDialog.Body>
               <AlertDialog.Footer>
@@ -998,14 +998,14 @@ export default function AdminPage() {
                   variant="ghost"
                   onPress={() => setDeleteTarget(null)}
                 >
-                  Cancel
+                  取消
                 </Button>
                 <Button
                   variant="danger"
                   onPress={confirmDelete}
                   isDisabled={deleteBm.isPending || deleteAnn.isPending}
                 >
-                  Delete
+                  删除
                 </Button>
               </AlertDialog.Footer>
             </AlertDialog.Dialog>
