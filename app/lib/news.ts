@@ -40,10 +40,7 @@ function stripHtml(html: string): string {
 async function fetchAnnouncements(): Promise<AnnouncementItem[]> {
   try {
     const res: GraphQLResponse<AnnouncementsQuery> =
-      await serverGraphQLRequest(AnnouncementsDocument, {
-        page: 1,
-        perPage: 50,
-      });
+      await serverGraphQLRequest(AnnouncementsDocument, { page: 1, perPage: 50 }, { tags: ["announcements"] });
 
     if (res.errors?.length) {
       console.error("Failed to fetch announcements:", res.errors[0].message);

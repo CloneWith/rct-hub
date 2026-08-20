@@ -17,6 +17,7 @@ import {
   type RestResponse,
   type GraphQLResponse,
 } from "./api";
+import { revalidateAnnouncements } from "./revalidate";
 import {
   MeDocument,
   UsersDocument,
@@ -435,6 +436,21 @@ function buildAnnouncementPayload(body: Record<string, unknown>): Record<string,
   return payload;
 }
 
+/**
+ * Invalidate the admin announcement list (react-query) and the server-side
+ * ISR Data Cache (homepage news feed + /news) after a successful write.
+ *
+ * The server action is fire-and-forget: cache invalidation must not block the
+ * admin UI, and a failure only delays the public pages refreshing — the 60s
+ * ISR window still applies as a fallback.
+ */
+function invalidateAnnouncements(qc: ReturnType<typeof useQueryClient>): void {
+  qc.invalidateQueries({ queryKey: ["announcements"] });
+  void revalidateAnnouncements().catch((err) =>
+    console.error("Failed to revalidate announcements cache:", err),
+  );
+}
+
 export function useAnnouncements(enabled = true, page = 1, perPage = 20) {
   const { data, isLoading } = useGraphQLPaged(
     ["announcements", page, perPage],
@@ -456,7 +472,7 @@ export function useCreateAnnouncement() {
   return useToastedMutation({
     mutationFn: (body: Record<string, unknown>) =>
       restFetch("/announcements", { method: "POST", body: JSON.stringify(buildAnnouncementPayload(body)) }).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
+    onSuccess: () => invalidateAnnouncements(qc),
   });
 }
 
@@ -465,7 +481,7 @@ export function useUpdateAnnouncement() {
   return useToastedMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
       restFetch(`/announcements/${id}`, { method: "PATCH", body: JSON.stringify(buildAnnouncementPayload(body)) }).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
+    onSuccess: () => invalidateAnnouncements(qc),
   });
 }
 
@@ -474,7 +490,7 @@ export function useDeleteAnnouncement() {
   return useToastedMutation({
     mutationFn: (id: string) =>
       restFetch(`/announcements/${id}`, { method: "DELETE" }).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
+    onSuccess: () => invalidateAnnouncements(qc),
   });
 }
 
@@ -483,6 +499,6 @@ export function usePublishAnnouncement() {
   return useToastedMutation({
     mutationFn: (id: string) =>
       restFetch(`/announcements/${id}/publish`, { method: "POST" }).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
+    onSuccess: () => invalidateAnnouncements(qc),
   });
 }
