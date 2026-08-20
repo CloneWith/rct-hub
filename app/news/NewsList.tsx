@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Card, Chip, Button } from "@heroui/react";
-import { Megaphone, FileText, ArrowRight, Users, Pin } from "lucide-react";
+import { Card, Chip } from "@heroui/react";
+import { Megaphone, FileText, Pin } from "lucide-react";
 import type { NewsItem } from "@/app/lib/news";
 import { PageHero } from "@/app/components/Section";
 import Reveal from "@/app/components/Reveal";
@@ -60,7 +60,7 @@ function NewsCard({item}: { item: NewsItem }) {
           {item.title}
         </h3>
         <p className="text-xs text-muted-foreground mb-3">
-          by {item.author} · {formatDate(item.publishedAt)}
+          作者 {item.author} · {formatDate(item.publishedAt)}
         </p>
         <p className="text-sm text-muted-foreground line-clamp-3 flex-1">
           {item.summary}
@@ -110,8 +110,8 @@ export function NewsList({items}: { items: NewsItem[] }) {
             <Reveal>
               <div className="text-center py-12 text-muted-foreground">
                 <Megaphone className="w-12 h-12 mx-auto mb-4 opacity-30"/>
-                <p className="text-lg">No news yet</p>
-                <p className="text-sm">Check back later for updates.</p>
+                <p className="text-lg">还没有公告</p>
+                <p className="text-sm">过段时间再来看看吧</p>
               </div>
             </Reveal>
           )}
