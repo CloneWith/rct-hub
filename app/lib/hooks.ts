@@ -5,6 +5,7 @@ import {
   useQuery,
   useMutation,
   useQueryClient,
+  keepPreviousData,
   type QueryKey,
   type UseMutationOptions,
 } from "@tanstack/react-query";
@@ -49,6 +50,15 @@ export type BeatmapItem = BeatmapsQuery["beatmaps"]["items"][number];
 /** Announcement list item (from `AnnouncementsQuery`). */
 export type AnnouncementItem = AnnouncementsQuery["announcements"]["items"][number];
 
+/** Generic paginated result — matches the GraphQL `*Page` shape. */
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+}
+
 // =========================================================================
 // Helpers
 // =========================================================================
@@ -85,16 +95,17 @@ export function useIsClient() {
 }
 
 /**
- * GraphQL query helper used by admin lists.
- * - Returns the selected data even when GraphQL reports errors, so partial
- *   results still render and the cache keeps the same shape as before.
- * - Shows a toast for any error message while keeping the query in success state.
- * - Throws only when no data is available at all.
+ * Paged GraphQL query helper used by admin lists.
+ *
+ * The `select` function must return a full `PagedResult<R>` (i.e. the GraphQL
+ * `*Page` object with `items`, `page`, `perPage`, `total`, `totalPages`).
+ * Uses `keepPreviousData` so the table keeps showing the old page while the
+ * next page loads, avoiding a flash of empty content.
  */
-function useGraphQLData<T, R>(
+function useGraphQLPaged<T, R>(
   queryKey: QueryKey,
   fetch: () => Promise<GraphQLResponse<T>>,
-  select: (data: T) => R,
+  select: (data: T) => PagedResult<R>,
   enabled: boolean,
 ) {
   const errorRef = useRef<string | null>(null);
@@ -112,6 +123,7 @@ function useGraphQLData<T, R>(
       return select(res.data);
     },
     enabled,
+    placeholderData: keepPreviousData,
   });
 
   useEffect(() => {
@@ -203,14 +215,20 @@ export function useMe() {
 // Admin — Users
 // =========================================================================
 
-export function useUsers(enabled = true) {
-  const { data, isLoading } = useGraphQLData(
-    ["admin", "users"],
-    () => graphqlRequest(UsersDocument, { page: 1, perPage: 50 }),
-    (data) => data.users.items,
+export function useUsers(enabled = true, page = 1, perPage = 20) {
+  const { data, isLoading } = useGraphQLPaged(
+    ["admin", "users", page, perPage],
+    () => graphqlRequest(UsersDocument, { page, perPage }),
+    (data) => data.users,
     enabled,
   );
-  return { data: data ?? [], isLoading };
+  return {
+    data: data?.items ?? [],
+    pagination: data
+      ? { page: data.page, perPage: data.perPage, total: data.total, totalPages: data.totalPages }
+      : null,
+    isLoading,
+  };
 }
 
 export function useUpdateUserRoles() {
@@ -223,20 +241,24 @@ export function useUpdateUserRoles() {
       }).then(throwOnRestError),
     onMutate: async ({ id, roles }) => {
       await qc.cancelQueries({ queryKey: ["admin", "users"] });
-      const prev = qc.getQueryData<UserItem[]>(["admin", "users"]);
-      if (prev) {
-        qc.setQueryData<UserItem[]>(["admin", "users"], (old) =>
-          old?.map((u) =>
+      const previousQueries = qc.getQueriesData<PagedResult<UserItem>>({ queryKey: ["admin", "users"] });
+      qc.setQueriesData<PagedResult<UserItem>>({ queryKey: ["admin", "users"] }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((u) =>
             u.id === id
               ? { ...u, roles: roles as UserRole[] }
               : u,
           ),
-        );
-      }
-      return { prev };
+        };
+      });
+      return { previousQueries };
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["admin", "users"], ctx.prev);
+      ctx?.previousQueries?.forEach(([key, data]) => {
+        qc.setQueryData(key, data);
+      });
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
@@ -252,16 +274,20 @@ export function useSetUserBanned() {
       }).then(throwOnRestError),
     onMutate: async ({ id, isBanned }) => {
       await qc.cancelQueries({ queryKey: ["admin", "users"] });
-      const prev = qc.getQueryData<UserItem[]>(["admin", "users"]);
-      if (prev) {
-        qc.setQueryData<UserItem[]>(["admin", "users"], (old) =>
-          old?.map((u) => (u.id === id ? { ...u, isBanned } : u)),
-        );
-      }
-      return { prev };
+      const previousQueries = qc.getQueriesData<PagedResult<UserItem>>({ queryKey: ["admin", "users"] });
+      qc.setQueriesData<PagedResult<UserItem>>({ queryKey: ["admin", "users"] }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((u) => (u.id === id ? { ...u, isBanned } : u)),
+        };
+      });
+      return { previousQueries };
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["admin", "users"], ctx.prev);
+      ctx?.previousQueries?.forEach(([key, data]) => {
+        qc.setQueryData(key, data);
+      });
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
@@ -277,20 +303,24 @@ export function useUpdateVerifyStatus() {
       }).then(throwOnRestError),
     onMutate: async ({ id, verifyStatus }) => {
       await qc.cancelQueries({ queryKey: ["admin", "users"] });
-      const prev = qc.getQueryData<UserItem[]>(["admin", "users"]);
-      if (prev) {
-        qc.setQueryData<UserItem[]>(["admin", "users"], (old) =>
-          old?.map((u) =>
+      const previousQueries = qc.getQueriesData<PagedResult<UserItem>>({ queryKey: ["admin", "users"] });
+      qc.setQueriesData<PagedResult<UserItem>>({ queryKey: ["admin", "users"] }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((u) =>
             u.id === id
               ? { ...u, verifyStatus: verifyStatus as VerifyStatus }
               : u,
           ),
-        );
-      }
-      return { prev };
+        };
+      });
+      return { previousQueries };
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["admin", "users"], ctx.prev);
+      ctx?.previousQueries?.forEach(([key, data]) => {
+        qc.setQueryData(key, data);
+      });
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
@@ -322,14 +352,20 @@ function buildBeatmapPatch(body: Record<string, unknown>): Record<string, unknow
   return patch;
 }
 
-export function useBeatmaps(enabled = true) {
-  const { data, isLoading } = useGraphQLData(
-    ["admin", "beatmaps"],
-    () => graphqlRequest(BeatmapsDocument, { page: 1, perPage: 50 }),
-    (data) => data.beatmaps.items,
+export function useBeatmaps(enabled = true, page = 1, perPage = 20) {
+  const { data, isLoading } = useGraphQLPaged(
+    ["admin", "beatmaps", page, perPage],
+    () => graphqlRequest(BeatmapsDocument, { page, perPage }),
+    (data) => data.beatmaps,
     enabled,
   );
-  return { data: data ?? [], isLoading };
+  return {
+    data: data?.items ?? [],
+    pagination: data
+      ? { page: data.page, perPage: data.perPage, total: data.total, totalPages: data.totalPages }
+      : null,
+    isLoading,
+  };
 }
 
 /** Beatmap fetched by osu! id (from `BeatmapByOsuIdQuery`). */
@@ -399,14 +435,20 @@ function buildAnnouncementPayload(body: Record<string, unknown>): Record<string,
   return payload;
 }
 
-export function useAnnouncements(enabled = true) {
-  const { data, isLoading } = useGraphQLData(
-    ["announcements"],
-    () => graphqlRequest(AnnouncementsDocument, { page: 1, perPage: 50 }),
-    (data) => data.announcements.items,
+export function useAnnouncements(enabled = true, page = 1, perPage = 20) {
+  const { data, isLoading } = useGraphQLPaged(
+    ["announcements", page, perPage],
+    () => graphqlRequest(AnnouncementsDocument, { page, perPage }),
+    (data) => data.announcements,
     enabled,
   );
-  return { data: data ?? [], isLoading };
+  return {
+    data: data?.items ?? [],
+    pagination: data
+      ? { page: data.page, perPage: data.perPage, total: data.total, totalPages: data.totalPages }
+      : null,
+    isLoading,
+  };
 }
 
 export function useCreateAnnouncement() {
