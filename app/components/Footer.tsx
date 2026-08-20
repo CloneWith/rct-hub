@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { Gamepad2 } from "lucide-react";
 import { THEME_NOTE } from "@/app/lib/tournament";
 
@@ -8,6 +10,16 @@ const LINKS = [
   { href: "/prizes", label: "奖品" },
   { href: "/news", label: "公告" },
 ];
+
+// 版权年份必须在请求时计算：Cache Components 的预渲染阶段禁止同步 IO
+// （new Date() 等非确定性调用会直接导致构建失败）。connection() 把该片段
+// 标记为动态，推迟到请求时执行；静态 shell 中 fallback 先行渲染。
+async function CopyrightLine() {
+  await connection();
+  return (
+    <span>© {new Date().getFullYear()} Ranka&apos;s Chess Tournament · 非官方 osu! 赛事</span>
+  );
+}
 
 export default function Footer() {
   return (
@@ -56,7 +68,9 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row">
-          <span>© {new Date().getFullYear()} Ranka&apos;s Chess Tournament · 非官方 osu! 赛事</span>
+          <Suspense fallback={<span>© Ranka&apos;s Chess Tournament · 非官方 osu! 赛事</span>}>
+            <CopyrightLine />
+          </Suspense>
           <span className="font-mono">核冬天开始的第 165 天</span>
         </div>
       </div>

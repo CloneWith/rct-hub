@@ -237,20 +237,19 @@ export async function graphqlRequest<TResult, TVariables>(
  * sends a plain JSON request. Use this for public, server-rendered GraphQL
  * reads such as the News feed.
  *
- * `cache` optionally overrides the Data Cache behavior of the underlying
- * fetch (default: revalidate every 60s). Pass `{ tags: [...] }` to enable
- * on-demand invalidation via `revalidateTag` / server actions.
+ * No caching is applied here: under `cacheComponents` the Data Cache is opt-in
+ * and controlled by the caller via `use cache` / `cacheLife` / `cacheTag`
+ * (see `fetchAnnouncements` in `news.ts`). Calling this outside a cached scope
+ * performs a fresh request every time.
  */
 export async function serverGraphQLRequest<TResult, TVariables>(
   doc: TypedDocumentString<TResult, TVariables>,
   variables?: TVariables,
-  cache?: { revalidate?: number; tags?: string[] },
 ): Promise<GraphQLResponse<TResult>> {
   const res = await fetch(GRAPHQL_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query: doc.toString(), variables }),
-    next: { revalidate: 60, ...(cache ?? {}) },
   });
   return res.json();
 }

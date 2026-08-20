@@ -5,6 +5,10 @@ import type { ComponentType } from "react";
 
 const POSTS_DIR = path.join(process.cwd(), "content/posts");
 
+// Fallback 用于 MDX frontmatter 缺失 publishedAt 时。必须是常量——Cache Components
+// 预渲染阶段禁止同步 IO（new Date() 等非确定性调用会直接导致构建失败）。
+const FALLBACK_PUBLISHED_AT = "1970-01-01T00:00:00Z";
+
 export interface PostFrontmatter {
   slug: string;
   title: string;
@@ -50,7 +54,7 @@ export function getAllPosts(): Post[] {
         slug,
         title: (data.title as string) ?? slug,
         author: (data.author as string) ?? "RCT Team",
-        publishedAt: (data.publishedAt as string) ?? new Date().toISOString(),
+        publishedAt: (data.publishedAt as string) ?? FALLBACK_PUBLISHED_AT,
         coverImage: data.coverImage as string | undefined,
         summary: toSummary(content, data.summary as string | undefined),
       };
@@ -78,7 +82,7 @@ export async function getPostBySlug(slug: string): Promise<PostDetail | null> {
     slug,
     title: (data.title as string) ?? slug,
     author: (data.author as string) ?? "RCT Team",
-    publishedAt: (data.publishedAt as string) ?? new Date().toISOString(),
+    publishedAt: (data.publishedAt as string) ?? FALLBACK_PUBLISHED_AT,
     coverImage: data.coverImage as string | undefined,
     summary: toSummary(content, data.summary as string | undefined),
     Content: mod.default,

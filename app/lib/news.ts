@@ -1,5 +1,4 @@
-"use server";
-
+import { cacheLife, cacheTag } from "next/cache";
 import { AnnouncementsDocument } from "@/app/lib/operations";
 import { serverGraphQLRequest, type GraphQLResponse } from "@/app/lib/api";
 import type { AnnouncementsQuery } from "@/app/graphql/graphql";
@@ -38,9 +37,15 @@ function stripHtml(html: string): string {
 }
 
 async function fetchAnnouncements(): Promise<AnnouncementItem[]> {
+  "use cache";
+  cacheLife("minutes"); // 60s revalidate + 1h expire
+  cacheTag("announcements"); // admin 变更后由 revalidateTag("announcements") 秒级失效
   try {
     const res: GraphQLResponse<AnnouncementsQuery> =
-      await serverGraphQLRequest(AnnouncementsDocument, { page: 1, perPage: 50 }, { tags: ["announcements"] });
+      await serverGraphQLRequest(AnnouncementsDocument, {
+        page: 1,
+        perPage: 50,
+      });
 
     if (res.errors?.length) {
       console.error("Failed to fetch announcements:", res.errors[0].message);
