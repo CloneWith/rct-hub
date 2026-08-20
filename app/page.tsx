@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight, Swords, MousePointerClick, Grid3X3, Users, Trophy, Gift, Sparkles } from "lucide-react";
 import AshField from "@/app/components/AshField";
@@ -78,9 +79,61 @@ function NewsSummary({ item }: { item: NewsItem }) {
   );
 }
 
-export default async function Home() {
+/** 新闻区块骨架屏：数据未就绪时立即输出，避免整页等待后端 GraphQL。 */
+function NewsSectionSkeleton() {
+  return (
+    <div className="grid gap-6 sm:grid-cols-3">
+      {[0, 1, 2].map(i => (
+        <div
+          key={i}
+          className="flex h-full flex-col rounded-2xl border border-border bg-surface/40 p-6"
+        >
+          <div className="mb-3 h-4 w-24 animate-pulse rounded-full bg-muted" />
+          <div className="mb-2 h-5 w-3/4 animate-pulse rounded bg-muted" />
+          <div className="space-y-2">
+            <div className="h-3 w-full animate-pulse rounded bg-muted" />
+            <div className="h-3 w-5/6 animate-pulse rounded bg-muted" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 异步子组件：配合 Suspense 流式渲染，公告数据不阻塞首屏。 */
+async function NewsSection() {
   const news = (await getNewsFeed()).slice(0, 3);
 
+  return (
+    <>
+      {news.length > 0 ? (
+        <div className="grid gap-6 sm:grid-cols-3">
+          {news.map((n, i) => (
+            <Reveal key={n.kind === "post" ? n.slug : n.id} delay={i * 80}>
+              <NewsSummary item={n} />
+            </Reveal>
+          ))}
+        </div>
+      ) : (
+        <Reveal className="mx-auto max-w-md rounded-2xl border border-border bg-surface/40 p-10 text-center text-muted-foreground">
+          <Trophy className="mx-auto mb-4 h-10 w-10 opacity-30" />
+          <p>暂时没有公告，敬请期待。</p>
+        </Reveal>
+      )}
+      <Reveal className="mt-10 text-center">
+        <Link
+          href="/news"
+          className="inline-flex items-center gap-2 text-sm font-medium text-gold transition-colors hover:text-primary"
+        >
+          查看全部公告
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Reveal>
+    </>
+  );
+}
+
+export default async function Home() {
   return (
     <div className="min-h-screen">
       {/* ============ Hero ============ */}
@@ -354,29 +407,9 @@ export default async function Home() {
 
       {/* ============ 公告 ============ */}
       <Section tint eyebrow="News" title="最新公告" lead="赛事动态与更新。">
-        {news.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-3">
-            {news.map((n, i) => (
-              <Reveal key={n.kind === "post" ? n.slug : n.id} delay={i * 80}>
-                <NewsSummary item={n} />
-              </Reveal>
-            ))}
-          </div>
-        ) : (
-          <Reveal className="mx-auto max-w-md rounded-2xl border border-border bg-surface/40 p-10 text-center text-muted-foreground">
-            <Trophy className="mx-auto mb-4 h-10 w-10 opacity-30" />
-            <p>暂时没有公告，敬请期待。</p>
-          </Reveal>
-        )}
-        <Reveal className="mt-10 text-center">
-          <Link
-            href="/news"
-            className="inline-flex items-center gap-2 text-sm font-medium text-gold transition-colors hover:text-primary"
-          >
-            查看全部公告
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Reveal>
+        <Suspense fallback={<NewsSectionSkeleton />}>
+          <NewsSection />
+        </Suspense>
       </Section>
 
       {/* ============ CTA ============ */}
