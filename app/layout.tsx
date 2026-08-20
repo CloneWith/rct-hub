@@ -30,9 +30,17 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
+      // suppressHydrationWarning：允许下面脚本注入的 .js class（React 不管理 html 的 class）
+      suppressHydrationWarning
       className={geistSans.variable + " " + geistMono.variable + " h-full antialiased dark"}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        {/* 同步注入 .js class：JS 可用时做滚动动画；无 JS 时 .reveal 内容默认可见 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.classList.add("js");`,
+          }}
+        />
         <Providers>
           <Navbar />
           <main className="flex-1">{children}</main>
