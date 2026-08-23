@@ -94,7 +94,7 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
   const openBmEdit = (b: BeatmapItem) => {
     setBmEditId(b.id);
     setBmF({
-      onlineID: b.onlineID,
+      onlineID: Number(b.onlineID),
       title: b.title,
       artist: b.artist,
       version: b.version,
@@ -115,7 +115,7 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
     fetchBm.mutate(bmF.onlineID, {
       onSuccess: (b) => {
         setBmF((p) => ({
-          onlineID: b.onlineID,
+          onlineID: Number(b.onlineID),
           title: b.title ?? "",
           artist: b.artist ?? "",
           version: b.version ?? "",
