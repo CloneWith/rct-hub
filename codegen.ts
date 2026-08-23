@@ -12,7 +12,7 @@ const config: CodegenConfig = {
         scalars: {
           ObjectID: "string",
           Time: "string",
-          JSON: "Record<string, unknown>",
+          UInt64: "string",
         },
       },
     },
