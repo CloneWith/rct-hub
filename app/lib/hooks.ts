@@ -12,8 +12,10 @@ import {
 import {
   graphqlRequest,
   restFetch,
+  rooms,
   getCachedUser,
   clearCachedUser,
+  type RoomMetadataInput,
   type RestResponse,
   type GraphQLResponse,
 } from "./api";
@@ -24,6 +26,7 @@ import {
   BeatmapsDocument,
   BeatmapByOsuIdDocument,
   AnnouncementsDocument,
+  RoomsDocument,
 } from "@/app/lib/operations";
 import { toast } from "@heroui/react";
 import type {
@@ -32,8 +35,9 @@ import type {
   BeatmapsQuery,
   BeatmapByOsuIdQuery,
   AnnouncementsQuery,
+  RoomsQuery,
 } from "@/app/graphql/graphql";
-import type { UserRole, VerifyStatus } from "@/app/graphql/graphql";
+import type { UserRole, VerifyStatus, MatchLifecycle, RoomType } from "@/app/graphql/graphql";
 
 // =========================================================================
 // Types — derived from codegen-generated GraphQL types
@@ -341,7 +345,7 @@ function buildBeatmapPayload(body: Record<string, unknown>): Record<string, unkn
   if (body.status !== undefined) payload.status = body.status;
   if (body.difficultyRating !== undefined) payload.difficulty_rating = body.difficultyRating;
   if (body.modString !== undefined) payload.mod_string = body.modString;
-  if (body.onlineID !== undefined) payload.id = body.onlineID;
+  if (body.onlineID !== undefined) payload.id = Number(body.onlineID);
   return payload;
 }
 
@@ -500,5 +504,114 @@ export function usePublishAnnouncement() {
     mutationFn: (id: string) =>
       restFetch(`/announcements/${id}/publish`, { method: "POST" }).then(throwOnRestError),
     onSuccess: () => invalidateAnnouncements(qc),
+  });
+}
+
+// =========================================================================
+// Rooms
+// =========================================================================
+
+/** Room list item (from `RoomsQuery`). */
+export type RoomListItem = RoomsQuery["rooms"]["items"][number];
+
+/** Filters accepted by `useRooms` — all optional, combined server-side. */
+export interface RoomFilters {
+  search?: string;
+  type?: RoomType;
+  round?: string;
+  status?: MatchLifecycle;
+  relatedToMe?: boolean;
+}
+
+/**
+ * Paged, filterable room list. The backend `rooms` query is gated by
+ * `privateViewer` (authenticated + verified + not banned); unauthorised
+ * callers receive a GraphQL error rather than an empty list.
+ */
+export function useRooms(
+  enabled: boolean,
+  filters: RoomFilters,
+  page = 1,
+  perPage = 20,
+) {
+  const { data, isLoading } = useGraphQLPaged(
+    ["rooms", filters, page, perPage],
+    () =>
+      graphqlRequest(RoomsDocument, {
+        type: filters.type ?? null,
+        search: filters.search || null,
+        round: filters.round || null,
+        status: filters.status ?? null,
+        relatedToMe: filters.relatedToMe ?? false,
+        page,
+        perPage,
+      }),
+    (data) => data.rooms,
+    enabled,
+  );
+  return {
+    data: data?.items ?? [],
+    pagination: data
+      ? { page: data.page, perPage: data.perPage, total: data.total, totalPages: data.totalPages }
+      : null,
+    isLoading,
+  };
+}
+
+/** Response of `POST /rooms` — the created room. */
+export interface CreatedRoom {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+}
+
+export function useCreateRoom() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (body: { name: string; type: RoomType }) =>
+      rooms.create({ name: body.name, type: body.type.toLowerCase() }).then(
+        (res) => throwOnRestError(res as RestResponse<CreatedRoom>),
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+  });
+}
+
+/** Admin-only partial metadata update (PUT /rooms/:id/metadata). */
+export function useUpdateRoomMetadata() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, ...body }: RoomMetadataInput & { id: string }) =>
+      rooms.updateMetadata(id, body).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+  });
+}
+
+/** Admin-only referee assignment (PATCH /rooms/:id/referee). */
+export function useSetRoomReferee() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, refereeUserId }: { id: string; refereeUserId: number | null }) =>
+      rooms.setReferee(id, refereeUserId).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+  });
+}
+
+/** MP link update — admin or the designated referee of a match room. */
+export function useSetRoomMPLink() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, mpLink }: { id: string; mpLink: string }) =>
+      rooms.setMpLink(id, { mp_link: mpLink }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+  });
+}
+
+/** Start the match of a room — admin or the designated referee. */
+export function useStartRoomMatch() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (id: string) => rooms.startMatch(id).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
   });
 }
