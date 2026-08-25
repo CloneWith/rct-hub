@@ -92,8 +92,8 @@ export default function RoomCreateDialog({ onClose }: { onClose: () => void }) {
 
                 <Select
                   variant="secondary"
-                  selectedKey={type}
-                  onSelectionChange={(v) => setType(v as RoomType)}
+                  value={type}
+                  onChange={(v) => setType(v as RoomType)}
                 >
                   <Label>房间类型</Label>
                   <Select.Trigger>
@@ -112,8 +112,8 @@ export default function RoomCreateDialog({ onClose }: { onClose: () => void }) {
 
                 <Select
                   variant="secondary"
-                  selectedKey={round ?? "none"}
-                  onSelectionChange={(v) => setRound(v === "none" ? null : (v as string))}
+                  value={round ?? "none"}
+                  onChange={(v) => setRound(v === "none" ? null : (v as string))}
                 >
                   <Label>比赛轮次（可选）</Label>
                   <Select.Trigger>

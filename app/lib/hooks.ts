@@ -449,7 +449,7 @@ function buildAnnouncementPayload(body: Record<string, unknown>): Record<string,
  * ISR window still applies as a fallback.
  */
 function invalidateAnnouncements(qc: ReturnType<typeof useQueryClient>): void {
-  qc.invalidateQueries({ queryKey: ["announcements"] });
+  void qc.invalidateQueries({ queryKey: ["announcements"] });
   void revalidateAnnouncements().catch((err) =>
     console.error("Failed to revalidate announcements cache:", err),
   );

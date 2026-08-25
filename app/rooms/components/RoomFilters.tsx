@@ -54,8 +54,8 @@ export default function RoomFilters({
       <Select
         variant="secondary"
         className="w-36"
-        selectedKey={round ?? "all"}
-        onSelectionChange={(v) => onRoundChange(v === "all" ? null : (v as string))}
+        value={round ?? "all"}
+        onChange={(v) => onRoundChange(v === "all" ? null : (v as string))}
       >
         <Label>轮次</Label>
         <Select.Trigger>
@@ -78,8 +78,8 @@ export default function RoomFilters({
       <Select
         variant="secondary"
         className="w-36"
-        selectedKey={status ?? "all"}
-        onSelectionChange={(v) =>
+        value={status ?? "all"}
+        onChange={(v) =>
           onStatusChange(v === "all" ? null : (v as MatchLifecycle))
         }
       >
