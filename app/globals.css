@@ -307,10 +307,21 @@ body {
   .animate-win-flash,
   .animate-floaty,
   .animate-fade-up,
+  .piece-breathing,
   .reveal {
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* 棋房：等待结果的棋子呼吸光圈 */
+@keyframes piece-breath {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.0); }
+  50% { box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.45); }
+}
+
+.piece-breathing {
+  animation: piece-breath 1.6s ease-in-out infinite;
 }

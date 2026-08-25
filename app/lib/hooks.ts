@@ -27,6 +27,7 @@ import {
   BeatmapByOsuIdDocument,
   AnnouncementsDocument,
   RoomsDocument,
+  MatchByCodeDocument,
 } from "@/app/lib/operations";
 import { toast } from "@heroui/react";
 import type {
@@ -613,5 +614,57 @@ export function useStartRoomMatch() {
   return useToastedMutation({
     mutationFn: (id: string) => rooms.startMatch(id).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+  });
+}
+
+// =========================================================================
+// Match (board screen)
+// =========================================================================
+
+export type MatchByCodeResult = {
+  id: string;
+  code: string;
+  name: string;
+  roomType: string;
+  room: { name: string; round: string } | null;
+  pool: Array<{
+    poolSlotID: string;
+    metadataStatus: string;
+    beatmap: {
+      onlineID: string;
+      title: string;
+      artist: string;
+      difficultyName: string;
+      starRating: number;
+      bpm: number;
+      totalLength: number;
+      coverUrl: string;
+    } | null;
+  }>;
+  snapshot: {
+    version: string;
+    lifecycle: string;
+    phase: string;
+    turn: number;
+    activeTeam: string | null;
+    wonCounts: { red: number; blue: number };
+  };
+};
+
+/**
+ * Board screen bootstrap: resolves a formal match by room code (the match
+ * code mirrors the room code) and returns identity, pool metadata and an
+ * initial snapshot for first paint. The WS channel takes over live updates.
+ */
+export function useMatchByCode(code: string, enabled = true) {
+  return useQuery({
+    queryKey: ["match", code],
+    queryFn: async () => {
+      const res = await graphqlRequest(MatchByCodeDocument, { code });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.matchByCode ?? null;
+    },
+    enabled: enabled && Boolean(code),
+    retry: 1,
   });
 }

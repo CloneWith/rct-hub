@@ -4,6 +4,20 @@ type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 import { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
+export type BeatmapMetadataStatus =
+  | 'FAILED'
+  | 'NOT_CONFIGURED'
+  | 'PENDING'
+  | 'READY';
+
+export type FormalMatchPhase =
+  | 'BAN'
+  | 'NONE'
+  | 'PICK'
+  | 'TB_PLAYING'
+  | 'TB_PREPARATION'
+  | 'WAITING_FOR_RESULT';
+
 export type MatchLifecycle =
   | 'ABORTED'
   | 'ADJUDICATION_REQUIRED'
@@ -16,6 +30,10 @@ export type RoomType =
   | 'CASUAL'
   | 'MATCH'
   | 'PRIVATE';
+
+export type TeamSide =
+  | 'BLUE'
+  | 'RED';
 
 export type UserRole =
   | 'ADMIN'
@@ -54,6 +72,13 @@ export type RoomsQueryVariables = Exact<{
 
 
 export type RoomsQuery = { rooms: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, code: string, name: string, type: RoomType, round: string, scheduledAt: string | null, createdAt: string, ownerID: string, refereeUserID: string | null, matchID: string | null, owner: { id: string, onlineID: string, username: string, avatarUrl: string } | null, match: { snapshot: { lifecycle: MatchLifecycle } } | null, settings: { redStrategistUserID: string | null, blueStrategistUserID: string | null, streamerUserID: string | null, redLeader: string | null, blueLeader: string | null, redPlayers: Array<string>, bluePlayers: Array<string>, mpLink: string | null, streamLink: string | null } }> } };
+
+export type MatchByCodeQueryVariables = Exact<{
+  code: string;
+}>;
+
+
+export type MatchByCodeQuery = { matchByCode: { id: string, code: string, name: string, roomType: RoomType, room: { name: string, round: string } | null, pool: Array<{ poolSlotID: string, metadataStatus: BeatmapMetadataStatus, beatmap: { onlineID: string, title: string, artist: string, difficultyName: string, starRating: number, bpm: number, totalLength: number, coverUrl: string } | null }>, snapshot: { version: string, lifecycle: MatchLifecycle, phase: FormalMatchPhase, turn: number, activeTeam: TeamSide | null, wonCounts: { red: number, blue: number } } } | null };
 
 export type AnnouncementsQueryVariables = Exact<{
   page?: number | null | undefined;
@@ -187,6 +212,45 @@ export const RoomsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RoomsQuery, RoomsQueryVariables>;
+export const MatchByCodeDocument = new TypedDocumentString(`
+    query MatchByCode($code: String!) {
+  matchByCode(code: $code) {
+    id
+    code
+    name
+    roomType
+    room {
+      name
+      round
+    }
+    pool {
+      poolSlotID
+      metadataStatus
+      beatmap {
+        onlineID
+        title
+        artist
+        difficultyName
+        starRating
+        bpm
+        totalLength
+        coverUrl: coverURL
+      }
+    }
+    snapshot {
+      version
+      lifecycle
+      phase
+      turn
+      activeTeam
+      wonCounts {
+        red
+        blue
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<MatchByCodeQuery, MatchByCodeQueryVariables>;
 export const AnnouncementsDocument = new TypedDocumentString(`
     query Announcements($page: Int, $perPage: Int) {
   announcements(page: $page, perPage: $perPage) {

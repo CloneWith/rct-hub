@@ -125,6 +125,57 @@ export const RoomsDocument = graphql(`
 `);
 
 // ---------------------------------------------------------------------------
+// Queries — Match (board screen)
+// ---------------------------------------------------------------------------
+
+/**
+ * Board screen bootstrap. The formal match's code equals the room code
+ * (`formal_match_factory.go`: `legacy.Code = room.Code`), so the room code
+ * from the URL resolves the match. The WS snapshot carries the live state;
+ * this query provides identity, pool metadata (beatmap display info) and an
+ * initial snapshot for first paint.
+ */
+export const MatchByCodeDocument = graphql(`
+  query MatchByCode($code: String!) {
+    matchByCode(code: $code) {
+      id
+      code
+      name
+      roomType
+      room {
+        name
+        round
+      }
+      pool {
+        poolSlotID
+        metadataStatus
+        beatmap {
+          onlineID
+          title
+          artist
+          difficultyName
+          starRating
+          bpm
+          totalLength
+          coverUrl: coverURL
+        }
+      }
+      snapshot {
+        version
+        lifecycle
+        phase
+        turn
+        activeTeam
+        wonCounts {
+          red
+          blue
+        }
+      }
+    }
+  }
+`);
+
+// ---------------------------------------------------------------------------
 // Queries — Announcements
 // ---------------------------------------------------------------------------
 
