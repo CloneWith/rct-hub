@@ -29,9 +29,8 @@ import RoleBadge from "@/app/components/RoleBadge";
 import PaginationBar from "./PaginationBar";
 import EmptyTableState from "./EmptyTableState";
 import SearchBar from "./SearchBar";
+import { AvailableRoles, AvailableVerifyStatuses } from "@/app/lib/model";
 
-const ROLE_OPTIONS = ["PLAYER", "STRATEGIST", "REFEREE", "STREAMER", "ADMIN"];
-const VERIFY_OPTIONS = ["VERIFIED", "PENDING", "UNVERIFIED"] as const;
 const PER_PAGE = 10;
 const SEARCH_PER_PAGE = 200;
 
@@ -43,7 +42,7 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
 
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [editRoles, setEditRoles] = useState<string[]>([]);
-  const [editVerifyStatus, setEditVerifyStatus] = useState("");
+  const [editVerifyStatus, setEditVerifyStatus] = useState("UNVERIFIED");
   const [banningUserId, setBanningUserId] = useState<string | null>(null);
 
   const perPage = search ? SEARCH_PER_PAGE : PER_PAGE;
@@ -251,13 +250,13 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
                     >
                       <Label>角色</Label>
                       <Description>为用户分配角色。</Description>
-                      {ROLE_OPTIONS.map((role) => (
+                      {AvailableRoles.map(([role, details]) => (
                         <Checkbox key={role} value={role}>
                           <Checkbox.Content>
                             <Checkbox.Control>
                               <Checkbox.Indicator/>
                             </Checkbox.Control>
-                            {role}
+                            {details.name}
                           </Checkbox.Content>
                         </Checkbox>
                       ))}
@@ -265,18 +264,20 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
                   </Surface>
                   {editUserId && userById(editUserId) && (
                     <Select
-                      selectedKey={editVerifyStatus}
-                      onSelectionChange={(v) => setEditVerifyStatus(v as string)}
+                      variant="secondary"
+                      value={editVerifyStatus}
+                      onChange={(v) => setEditVerifyStatus(v as string)}
                     >
-                      <Label>验证状态</Label>
+                      <Label>认证状态</Label>
                       <Select.Trigger>
                         <Select.Value/>
                       </Select.Trigger>
                       <Select.Popover>
                         <ListBox>
-                          {VERIFY_OPTIONS.map((v) => (
+                          {AvailableVerifyStatuses.map(([v, details]) => (
                             <ListBox.Item key={v} id={v}>
-                              {v}
+                              {details.name}
+                              <ListBox.ItemIndicator />
                             </ListBox.Item>
                           ))}
                         </ListBox>

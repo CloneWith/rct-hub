@@ -27,7 +27,7 @@ import PaginationBar from "./PaginationBar";
 import EmptyTableState from "./EmptyTableState";
 import SearchBar from "./SearchBar";
 
-const MOD_OPTIONS = ["NM", "HD", "HR", "DT", "FM", "Shiro", "TB"];
+const MOD_OPTIONS = ["NM", "HD", "HR", "DT", "FM", "TB"];
 const STATUS_OPTIONS = ["ranked", "loved", "qualified", "graveyard"];
 const PER_PAGE = 10;
 const SEARCH_PER_PAGE = 200;
@@ -376,8 +376,8 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
                         </TextField>
                         <Select
                           variant="secondary"
-                          selectedKey={bmF.modString}
-                          onSelectionChange={(v) =>
+                          value={bmF.modString}
+                          onChange={(v) =>
                             setBmF((p) => ({...p, modString: v as string}))
                           }
                         >
@@ -397,8 +397,8 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
                         </Select>
                         <Select
                           variant="secondary"
-                          selectedKey={bmF.status}
-                          onSelectionChange={(v) =>
+                          value={bmF.status}
+                          onChange={(v) =>
                             setBmF((p) => ({...p, status: v as string}))
                           }
                         >
