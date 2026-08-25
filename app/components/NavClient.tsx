@@ -10,11 +10,13 @@ import {
   Menu,
   X,
   BookOpen,
+  DoorOpen,
   Gift,
 } from "lucide-react";
 
 const navLinks = [
   { href: "/", label: "首页", icon: Home },
+  { href: "/rooms", label: "房间", icon: DoorOpen },
   { href: "/rules", label: "玩法规则", icon: BookOpen },
   { href: "/format", label: "赛制", icon: Swords },
   { href: "/prizes", label: "奖品", icon: Gift },

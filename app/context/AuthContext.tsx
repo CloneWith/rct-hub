@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     clearCachedUser();
     queryClient.setQueryData(["me"], null);
-    queryClient.invalidateQueries({ queryKey: ["me"] });
+    await queryClient.invalidateQueries({ queryKey: ["me"] });
   }, [queryClient]);
 
   return (

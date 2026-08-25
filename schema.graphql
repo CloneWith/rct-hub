@@ -1,6 +1,5 @@
 # rctHubBackend GraphQL Schema
 # Phase 1 — 只读查询: 覆盖全部 domain 类型的 Query + 嵌套查询
-# 完整 Schema (含 Phase 2/3 类型) 见 docs/schema-full.graphql
 
 # =============================================================================
 # 自定义标量
@@ -8,16 +7,10 @@
 
 scalar Time     # time.Time — gqlgen 内置支持 (graphql.Time)
 scalar ObjectID # bson.ObjectID hex — 映射为 string
-scalar JSON     # 任意 JSON 值 — 用于事件 payload 等
+scalar UInt64   # 十进制字符串，避免 GraphQL Int32 截断版本号
 
 # gqlgen 内置 directive: 控制字段生成行为
 directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION
-
-# 鉴权 directive (Phase 2 — §9.10 Read Model 角色裁剪)
-# @requireRole: 检查 JWT claims 中的角色；admin=true 时也接受 ADMIN 角色
-directive @requireRole(role: UserRole!, admin: Boolean = false) on FIELD_DEFINITION
-# @public: 标记字段公开可访问 (no-op, 文档语义)
-directive @public on FIELD_DEFINITION
 
 # =============================================================================
 # 枚举 (值用大写，domain 用小写/混合大小写，mapper 中转换)
@@ -48,23 +41,6 @@ enum TeamSide {
   BLUE
 }
 
-enum MatchStatus {
-  PENDING
-  ACTIVE
-  FINISHED
-  CANCELED
-}
-
-enum MatchPhase {
-  SETUP
-  ROLL
-  BAN
-  PICK
-  WIN
-  TB
-  ENDED
-}
-
 enum PieceMod {
   NM
   HD
@@ -83,43 +59,13 @@ enum PieceState {
   DEAD
 }
 
-enum MoveType {
-  PICK
-  UNPICK
-  BAN
-  UNBAN
-  CLAIM
-  WIN
-  UNWIN
-  ROB
-  UNROB
-  DEAD
-  UNDEAD
-  SURRENDER
-}
-
-enum WinReason {
-  FOUR_IN_A_ROW
-  TIE_BREAKER
-  SURRENDER
-  DRAW
-  FORFEIT
-}
-
-enum BoardZone {
-  NM
-  HD
-  HR
-  DT
-}
-
 # =============================================================================
 # 核心类型
 # =============================================================================
 
 type User {
   id: ObjectID!
-  onlineID: Int!
+  onlineID: ID!
   username: String!
   avatarURL: String!
   countryCode: String!
@@ -137,8 +83,12 @@ type Room {
   code: String!
   name: String!
   type: RoomType!
-  ownerID: Int!
+  ownerID: ID!
   owner: User @goField(forceResolver: true)
+  refereeUserID: ID
+  referee: User @goField(forceResolver: true)
+  round: String!
+  scheduledAt: Time
   settings: RoomSettings!
   matchID: ID               # 内部关联, null 表示尚未开始比赛
   match: Match @goField(forceResolver: true)
@@ -147,19 +97,19 @@ type Room {
 }
 
 type RoomSettings {
-  redStrategistUserID: Int
+  redStrategistUserID: ID
   redStrategist: User @goField(forceResolver: true)
-  blueStrategistUserID: Int
+  blueStrategistUserID: ID
   blueStrategist: User @goField(forceResolver: true)
-  streamerUserID: Int
+  streamerUserID: ID
   streamer: User @goField(forceResolver: true)
   mappool: Mappool!
   firstPick: TeamSide
   firstBan: TeamSide
-  redPlayers: [Int!]!
-  bluePlayers: [Int!]!
-  redLeader: Int
-  blueLeader: Int
+  redPlayers: [ID!]!
+  bluePlayers: [ID!]!
+  redLeader: ID
+  blueLeader: ID
   mpLink: String
   streamLink: String
 }
@@ -170,75 +120,198 @@ type Match {
   name: String!
   roomType: RoomType!
   roomID: ID!               # 内部关联
-  status: MatchStatus!
-  phase: MatchPhase          # 计算字段: from TurnState.Phase
-  activeTeam: TeamSide       # 计算字段: from TurnState.ActiveTeam
-  board: Board
-  pool: Mappool
-  teams: MatchTeams!
-  bpOrder: BPOrder
-  turnState: TurnState
-  timer: TimerState
-  result: MatchResult @goField(forceResolver: true)   # domain.Result 独立实体，需 resolver 查询
-
-  # 嵌套查询 — 需要 service 调用
-  moves(limit: Int = 50, offset: Int = 0): [Move!]! @goField(forceResolver: true)
-  recentMove: Move @goField(forceResolver: true)
   room: Room @goField(forceResolver: true)
+  pool: [MatchPoolSlotMetadata!]!
 
   # 客户端专属视图 (Phase 2 — Read Model §9.10)
   # 视图字段需要 forceResolver，因为计算逻辑需要重新获取 domain.Match
-  strategistView: StrategistView! @requireRole(role: STRATEGIST) @goField(forceResolver: true)
+  strategistView: StrategistView @goField(forceResolver: true)
+  captainView: CaptainView @goField(forceResolver: true)
   spectatorView: SpectatorView! @goField(forceResolver: true)
   overlayView: OverlayView! @goField(forceResolver: true)
-  refereeView: RefereeView! @requireRole(role: REFEREE, admin: true) @goField(forceResolver: true)
+  refereeView: RefereeView @goField(forceResolver: true)
 
   createdAt: Time!
+
+  # 正式比赛唯一权威赛况。
+  snapshot: MatchSnapshot!
+}
+
+type MatchPoolSlotMetadata {
+  poolSlotID: ID!
+  beatmapID: ID
+  beatmap: Beatmap @goField(forceResolver: true)
+  metadataStatus: BeatmapMetadataStatus! @goField(forceResolver: true)
+  metadataAttempts: Int! @goField(forceResolver: true)
+  metadataNextRetryAt: Time @goField(forceResolver: true)
+  metadataLastError: String @goField(forceResolver: true)
+}
+
+enum BeatmapMetadataStatus { NOT_CONFIGURED READY PENDING FAILED }
+
+enum MatchLifecycle {
+  READY
+  RUNNING
+  SUSPENDED
+  ADJUDICATION_REQUIRED
+  FINISHED
+  ABORTED
+}
+
+enum FormalMatchPhase {
+  NONE
+  BAN
+  PICK
+  WAITING_FOR_RESULT
+  TB_PREPARATION
+  TB_PLAYING
+}
+
+enum FormalBoardZone { DT HD HR }
+enum PoolSlotState { AVAILABLE BANNED SELECTED }
+enum BoardPieceOutcome { WAITING_RESULT WON WHITE DEAD }
+enum ForceMod { NM HD HR }
+enum TBBasis { CAPTAIN_AGREEMENT FORCED_AFTER_ROBBERY_CHECKS }
+enum MatchResultReason { FOUR_ALIGNMENT TB SURRENDER STALEMATE_WON_COUNT }
+
+enum MatchAction {
+  START_MATCH
+  BAN_POOL_SLOT
+  PLACE_PIECE
+  PLACE_SHIRO
+  ROB_PIECE
+  CONFIRM_BEATMAP_RESULT
+  GRANT_ADDITIONAL_TIME
+  CALIBRATE_TIMER
+  PAUSE_TIMER
+  RESUME_TIMER
+  SUSPEND_MATCH
+  RESUME_MATCH
+  SKIP_CURRENT_ACTION
+  ABORT_MATCH
+  REQUEST_TB
+  RESPOND_TB_REQUEST
+  START_TB
+  CONFIRM_TB_RESULT
+  RECORD_SURRENDER
+}
+
+enum MatchCommandDisposition { APPLIED REPLAYED }
+enum MatchActorCapability { STRATEGIST CAPTAIN REFEREE }
+
+enum MatchEventType {
+  MATCH_STARTED
+  BAN_PHASE_STARTED
+  POOL_SLOT_BANNED
+  TURN_ADVANCED
+  PICK_PHASE_STARTED
+  PIECE_PLACED
+  SHIRO_PLACED
+  RESULT_CONFIRMATION_REQUESTED
+  BEATMAP_RESULT_CONFIRMED
+  PIECE_WON
+  PIECES_SACRIFICED
+  PIECE_ROBBED
+  ADDITIONAL_TIME_GRANTED
+  TIMER_CALIBRATED
+  TIMER_PAUSED
+  TIMER_RESUMED
+  MATCH_SUSPENDED
+  MATCH_RESUMED
+  ACTION_SKIPPED
+  MATCH_ABORTED
+  REFEREE_PROXY_ACTION_RECORDED
+  TB_REQUESTED
+  TB_REQUEST_ACCEPTED
+  TB_REQUEST_REJECTED
+  TB_REQUEST_EXPIRED
+  TB_FORCED
+  TB_PREPARATION_STARTED
+  TB_STARTED
+  TB_RESULT_CONFIRMED
+  SURRENDER_RECORDED
+  MATCH_FINISHED
+  STALEMATE_DETECTED
+  ADJUDICATION_REQUIRED
+  TIMER_STARTED
+  TIMER_STOPPED
+}
+
+type MatchSnapshot {
+  version: UInt64!
+  lifecycle: MatchLifecycle!
+  phase: FormalMatchPhase!
+  firstBan: TeamSide!
+  firstPick: TeamSide!
+  turn: Int!
+  activeTeam: TeamSide
+  poolSlots: [FormalPoolSlot!]!
+  board: FormalBoard!
+  wonCounts: TeamCounts!
+  timer: FormalTimer!
+  robberyUsed: TeamFlags!
+  teamPauseUsed: TeamFlags!
+  rosters: FormalRosters!
+  pendingPieceID: ID
+  pendingTBRequest: PendingTBRequest
+  tbEntry: TBEntry
+  winner: TeamSide
+  result: FormalMatchResult
+  stalemate: StalemateEvidence
+}
+
+type FormalPoolSlot { id: ID!, mod: PieceMod!, state: PoolSlotState! }
+type FormalBoard { cells: [FormalBoardCell!]! }
+type FormalBoardCell {
+  cell: ID!
+  row: Int!
+  col: Int!
+  zone: FormalBoardZone!
+  piece: FormalBoardPiece
+}
+type FormalBoardPiece {
+  id: ID!
+  sourcePoolSlotID: ID!
+  mod: PieceMod!
+  forceMod: ForceMod
+  selectedBy: TeamSide!
+  owner: TeamSide
+  outcome: BoardPieceOutcome!
+}
+type FormalTimer {
   startedAt: Time
-  finishedAt: Time
-  updatedAt: Time!
+  durationMilliseconds: Int!
+  paused: Boolean!
+  remainingAtPauseMilliseconds: Int
 }
-
-type MatchTeams {
-  red: Team!
-  blue: Team!
+type TeamFlags { red: Boolean!, blue: Boolean! }
+type FormalRoster { leaderID: ID!, playerIDs: [ID!]! }
+type FormalRosters { red: FormalRoster!, blue: FormalRoster! }
+type PendingTBRequest { id: ID!, requestedBy: TeamSide!, basis: TBBasis! }
+type TBEntry { basis: TBBasis!, requestID: ID, requestedBy: TeamSide }
+type FormalMatchResult {
+  winner: TeamSide!
+  reason: MatchResultReason!
+  surrenderingTeam: TeamSide
+  confirmingPlayerIDs: [ID!]!
+  wonCounts: TeamCounts!
 }
+type TeamCounts { red: Int!, blue: Int! }
+type StalemateEvidence { wonCounts: TeamCounts! }
 
-type Team {
-  id: ObjectID!
-  side: TeamSide!
-  name: String!
-  description: String!
-  seed: String!
-  color: String!
-  leaderID: Int
-  leader: User @goField(forceResolver: true)
-  strategistID: Int
-  strategist: User @goField(forceResolver: true)
-  players: [Int!]!
-  playerUsers: [User!]! @goField(forceResolver: true)
-}
-
-type Board {
-  rows: Int!
-  cols: Int!
-  cells: [[BoardCell!]!]!
-}
-
-type BoardCell {
-  position: Position!
-  zone: BoardZone!
-  state: String!
-  pieceID: String
-  teamID: String
-}
-
-type Piece {
-  beatmapID: Int
-  state: PieceState!
-  teamID: String
-  forceMod: String
-  position: Position
+type LegalPlacement { poolSlotID: ID!, cell: ID!, forceMod: ForceMod }
+type RobberyPlan { targetPieceID: ID!, sacrificeSets: [[ID!]!]! }
+type MatchActorAnalysis {
+  allowedActions: [MatchAction!]!
+  banPoolSlotIDs: [ID!]!
+  legalPlacements: [LegalPlacement!]!
+  shiroCells: [ID!]!
+  robberyPlans: [RobberyPlan!]!
+  pendingTBRequestID: ID
+  canAcceptTBRequest: Boolean!
+  canRejectTBRequest: Boolean!
+  tbRequestTeams: [TeamSide!]!
+  tbResponseTeams: [TeamSide!]!
 }
 
 type Position {
@@ -258,7 +331,7 @@ type PoolSlotGroup {
 type PoolSlot {
   mod: PieceMod!
   index: Int!
-  beatmapID: Int           # osu! beatmap ID, null for Shiro/removed
+  beatmapID: ID            # osu! beatmap ID, null for Shiro/removed
   beatmap: Beatmap @goField(forceResolver: true)
   state: PieceState!
   teamID: String
@@ -268,13 +341,13 @@ type PoolSlot {
 
 type Beatmap {
   id: ObjectID!
-  onlineID: Int!
-  beatmapsetID: Int!
+  onlineID: ID!
+  beatmapsetID: ID!
   title: String!
   artist: String!
   difficultyName: String!
   status: String!
-  authorID: Int!
+  authorID: ID!
   author: User @goField(forceResolver: true)
   rulesetID: Int!
   starRating: Float!
@@ -287,9 +360,9 @@ type Beatmap {
   coverURL: String!
   modString: String!
   modIndex: Int!
-  selectorID: Int               # domain: SelectorID int64 (谱面选择者)
+  selectorID: ID                # domain: SelectorID int64 (谱面选择者)
   selector: User @goField(forceResolver: true)
-  creditUserIDs: [Int!]!        # domain: CreditUserIDs []int64 (贡献者)
+  creditUserIDs: [ID!]!         # domain: CreditUserIDs []int64 (贡献者)
   credits: [User!]! @goField(forceResolver: true)
   skill: String
   comment: String
@@ -298,97 +371,17 @@ type Beatmap {
   updatedAt: Time!
 }
 
-type Move {
-  id: ObjectID!
-  matchID: ObjectID!
-  roomID: ObjectID!
-  type: MoveType!
-  teamSide: TeamSide
-  operatorID: Int!
-  operator: User @goField(forceResolver: true)
-  slot: PoolSlot
-  from: Position
-  to: Position
-  forceMod: String
-  redScore: PlayerScore
-  blueScore: PlayerScore
-  comment: String!
-  createdAt: Time!
-}
-
-type PlayerScore {
-  userID: Int!
-  score: Int!
-  accuracy: Float!
-  combo: Int!
-}
-
-type BPOrder {
-  firstPick: TeamSide!
-  firstBan: TeamSide!
-}
-
-type TurnState {
-  phase: MatchPhase!
-  counter: Int!
-  activeTeam: TeamSide
-  action: String
-  startedAt: Time
-  timeLimit: Int    # seconds (domain: time.Duration)
-  bonusTime: Int    # seconds
-  bonusUsed: Boolean!
-}
-
-type TimerState {
-  startedAt: Time
-  timeLimit: Int!   # seconds (domain: time.Duration)
-  bonusTime: Int!   # seconds
-  bonusUsed: Boolean!
-  isPaused: Boolean!
-  pausedAt: Time
-  remainingAtPause: Int  # seconds
-}
-
 type Announcement {
   id: ObjectID!
   pinned: Boolean!
   visible: Boolean!
   title: String!
   content: String!
-  authorID: Int!
+  authorID: ID!
   author: User @goField(forceResolver: true)
   publishedAt: Time
   createdAt: Time!
   updatedAt: Time!
-}
-
-# =============================================================================
-# 比赛结果类型 (domain.Result / domain.TeamScore / domain.WinningAlignment)
-# =============================================================================
-
-type MatchResult {
-  id: ObjectID!
-  matchID: ObjectID!
-  roomID: ObjectID!
-  winner: TeamSide              # domain: *TeamSide (nil = 平局/无赢家 → null)
-  winReason: WinReason!
-  scores: [TeamScore!]!
-  wonPieces: JSON               # domain: map[TeamSide]int → {"red":N,"blue":N}
-  alignments: [WinningAlignment!]!
-  summary: String               # domain: string (空 = null)
-  createdAt: Time!
-  updatedAt: Time!
-}
-
-type TeamScore {
-  teamSide: TeamSide!           # domain: TeamID TeamSide
-  score: Int!
-}
-
-type WinningAlignment {
-  length: Int!                  # domain: Length int (连子长度)
-  positions: [Position!]!      # domain: Positions []Position
-  teamID: String!               # domain: TeamID string ("red"/"blue")
 }
 
 # =============================================================================
@@ -399,124 +392,65 @@ type WinningAlignment {
 # --- 策略师视图: 当前可执行操作、可选格子、计时器 ---
 type StrategistView {
   isMyTurn: Boolean!
-  myTeam: TeamSide                # null 如果用户不是本比赛的策略师
-  allowedActions: [String!]!
-  disallowedActions: [String!]!
-  selectablePoolSlots: [String!]! # 格式: "MOD-INDEX" 如 "NM-1"
-  selectableBoardCells: [String!]! # 格式: "row,col" 如 "0,1"
-  timer: TimerInfo!
-  robberyInProgress: Boolean!
+  myTeam: TeamSide!
+  analysis: MatchActorAnalysis!
+}
+
+type CaptainView {
+  myTeam: TeamSide!
+  analysis: MatchActorAnalysis!
 }
 
 # --- 观众视图: 公开安全的棋盘摘要和比分 ---
 type SpectatorView {
-  board: BoardSummary!
-  scores: TeamScores!
-  currentPhase: MatchPhase!
+  board: FormalBoard!
+  wonCounts: TeamCounts!
+  currentPhase: FormalMatchPhase!
   activeTeam: TeamSide
-  turnNumber: Int
-  recentMoves: [Move!]!
+  turnNumber: Int!
+  lifecycle: MatchLifecycle!
 }
 
 # --- OBS Overlay 视图: 极简渲染数据 ---
 type OverlayView {
-  board: BoardRenderData!
-  scores: TeamScores!
-  timer: TimerDisplay!
-  lastEvent: DomainEventSnapshot  # null: WebSocket 事件系统尚未实现
+  board: FormalBoard!
+  wonCounts: TeamCounts!
+  timer: FormalTimer!
+  lifecycle: MatchLifecycle!
+  phase: FormalMatchPhase!
+  activeTeam: TeamSide
 }
 
 # --- 裁判视图: 完整比赛数据 + 审计 ---
 type RefereeView {
-  board: Board!
-  pool: Mappool!
-  teams: MatchTeams!
-  turnState: TurnState!
-  timer: TimerState!
-  auditLog(limit: Int = 50): [AuditEntry!]!    # 空: 审计系统尚未实现
-  connectionStatus: [ClientConnection!]!        # 空: WebSocket 连接追踪尚未实现
-}
-
-# --- 视图支撑类型 ---
-
-type BoardSummary {
-  cells: [[CellSummary!]!]!
-}
-
-type CellSummary {
-  position: Position!
-  piece: PieceSummary              # null if cell is empty
-}
-
-type PieceSummary {
-  mod: PieceMod!
-  state: PieceState!
-  owner: TeamSide                  # null if not owned
-}
-
-type BoardRenderData {
-  cells: [[CellRender!]!]!
-  lastChangedCells: [Position!]!   # 空: 变更追踪尚未实现
-}
-
-type CellRender {
-  position: Position!
-  zone: BoardZone!
-  piece: PieceRender               # null if cell is empty
-}
-
-type PieceRender {
-  mod: PieceMod!
-  state: PieceState!
-  owner: TeamSide
-  beatmapCover: String             # 谱面封面 URL
-}
-
-type TeamScores {
-  red: Int!
-  blue: Int!
-}
-
-type TimerInfo {
-  startedAt: Time!
-  durationSeconds: Int!
-  remainingSeconds: Int!
-  isPaused: Boolean!
-}
-
-type TimerDisplay {
-  remainingSeconds: Int!
-  isPaused: Boolean!
-  isWarning: Boolean!              # 剩余 < 10s 时为 true
-}
-
-type DomainEventSnapshot {
-  type: String!
-  payload: JSON!
-  timestamp: Time!
+  matchID: ID!
+  snapshot: MatchSnapshot!
+  analysis: MatchActorAnalysis!
+  suspensionReason: String
+  abortReason: String
+  auditLog(limit: Int = 50): [AuditEntry!]! @goField(forceResolver: true)
+  automationIssues(limit: Int = 50): [MatchAutomationIssue!]! @goField(forceResolver: true)
 }
 
 type AuditEntry {
   actionId: ObjectID!
   matchId: ObjectID!
-  sequence: Int!
-  actorId: Int!
-  actorRole: UserRole!
+  sequence: UInt64!
+  actor: MatchCommandActor!
   commandType: String!
-  previousVersion: Int!
-  resultingVersion: Int!
+  previousVersion: UInt64!
+  resultingVersion: UInt64!
   timestamp: Time!
-  isAdminOverride: Boolean!
   reason: String
 }
 
-type ClientConnection {
-  userID: Int!
-  username: String!
-  role: UserRole!
-  teamSide: TeamSide
-  isConnected: Boolean!
-  lastSeenAt: Time
+type MatchAutomationIssue {
+  eventID: ID!
+  sequence: UInt64!
+  eventType: MatchEventType!
+  attempts: Int!
+  lastError: String!
+  occurredAt: Time!
 }
 
 # =============================================================================
@@ -577,12 +511,12 @@ type Query {
   # 比赛
   match(id: ID!): Match
   matchByCode(code: String!): Match
-  matches(status: MatchStatus, page: Int = 1, perPage: Int = 20): MatchPage!
+  matches(page: Int = 1, perPage: Int = 20): MatchPage!
 
   # 房间
   room(id: ID!): Room
   roomByCode(code: String!): Room
-  rooms(type: RoomType, page: Int = 1, perPage: Int = 20): RoomPage!
+  rooms(type: RoomType, search: String, round: String, status: MatchLifecycle, relatedToMe: Boolean = false, page: Int = 1, perPage: Int = 20): RoomPage!
 
   # 谱面
   beatmap(id: ID!): Beatmap
@@ -596,154 +530,172 @@ type Query {
   # 公告
   announcements(page: Int = 1, perPage: Int = 20): AnnouncementPage!
   announcement(id: ID!): Announcement
+  ircObservations(matchId: ID!, channel: String!): [IRCObservation!]!
+  ircJobs(matchId: ID!): [IRCJob!]!
+  ircConnectionStatus(matchId: ID!): IRCConnectionStatus!
 }
 
+enum IRCReviewStatus { PENDING CONFIRMING CONFIRMED REJECTED }
+type IRCSuggestedResult { winningTeam: TeamSide!, boardPieceID: ID! }
+type IRCObservation {
+  id: ID!, channel: String!, sender: String!, command: String!, raw: String!, observedAt: Time!
+  reviewStatus: IRCReviewStatus!, reviewReason: String, suggestedResult: IRCSuggestedResult
+}
+type IRCConnectionStatus { configured: Boolean!, connected: Boolean!, degraded: Boolean!, lastError: String }
+enum IRCJobStatus { PENDING SENDING SENT ACKNOWLEDGED FAILED CANCELLED }
+type IRCJob {
+  id: ID!, matchID: ID!, channel: String!, kind: String!, payload: String!, status: IRCJobStatus!
+  attempts: Int!, automaticRetry: Boolean!, nextTryAt: Time, sentAt: Time, ackDeadline: Time, acknowledgedAt: Time, lastError: String
+}
+input RetryIRCJobInput { matchID: ID!, jobID: ID! }
+input RetryMatchAutomationInput { matchID: ID!, eventID: ID! }
+input RetryBeatmapMetadataInput { matchID: ID!, beatmapID: ID! }
+input ConfirmIRCResultInput { matchId: ID!, expectedVersion: UInt64!, commandId: String!, observationId: ID!, boardPieceId: ID!, winningTeam: TeamSide! }
+
 # =============================================================================
-# Mutation (Phase 3 — Command Mutations)
-# 复用现有 MatchService 方法，不引入新业务逻辑分支
+# Authoritative formal-match commands
 # =============================================================================
 
-# --- 通用 Command 元数据 (文档 §13) ---
 input CommandMeta {
   matchId: ID!
-  expectedVersion: Int!            # 乐观锁版本号 (当前预留，暂不强制校验)
-  commandId: String!               # 客户端生成的幂等键
-}
-
-# --- Input 类型 ---
-
-input PoolSlotRef {
-  mod: PieceMod!
-  index: Int!
+  expectedVersion: UInt64!
+  commandId: String!
 }
 
 input PositionInput {
-  row: Int!                         # domain: Y
-  col: Int!                         # domain: X
+  row: Int!
+  col: Int!
 }
 
-input BanPoolSlotInput {
-  meta: CommandMeta!
-  slot: PoolSlotRef!
-}
+input BanPoolSlotInput { meta: CommandMeta!, poolSlotId: String! }
+input RefereeBanPoolSlotInput { meta: CommandMeta!, actingTeam: TeamSide!, poolSlotId: String!, reason: String! }
+input PlacePieceInput { meta: CommandMeta!, poolSlotId: String!, position: PositionInput! }
+input RefereePlacePieceInput { meta: CommandMeta!, actingTeam: TeamSide!, poolSlotId: String!, position: PositionInput!, reason: String! }
+input PlaceShiroInput { meta: CommandMeta!, position: PositionInput! }
+input RefereePlaceShiroInput { meta: CommandMeta!, actingTeam: TeamSide!, position: PositionInput!, reason: String! }
+input RobPieceInput { meta: CommandMeta!, targetPieceId: String!, sacrificeSets: [[String!]!]! }
+input RefereeRobPieceInput { meta: CommandMeta!, actingTeam: TeamSide!, targetPieceId: String!, sacrificeSets: [[String!]!]!, reason: String! }
+input ReasonCommandInput { meta: CommandMeta!, reason: String! }
+input CalibrateTimerInput { meta: CommandMeta!, remainingMilliseconds: Int!, reason: String! }
+input RequestTbInput { meta: CommandMeta!, requestId: String! }
+input RefereeRequestTbInput { meta: CommandMeta!, actingTeam: TeamSide!, requestId: String!, reason: String! }
+input RespondTbRequestInput { meta: CommandMeta!, requestId: String!, accept: Boolean! }
+input RefereeRespondTbRequestInput { meta: CommandMeta!, actingTeam: TeamSide!, requestId: String!, accept: Boolean!, reason: String! }
+input ConfirmTbResultInput { meta: CommandMeta!, winningTeam: TeamSide! }
+input ConfirmBeatmapResultInput { meta: CommandMeta!, boardPieceId: String!, winningTeam: TeamSide! }
+input RecordSurrenderInput { meta: CommandMeta!, surrenderingTeam: TeamSide!, confirmingPlayerIds: [ID!]!, reason: String! }
 
-input UnbanPoolSlotInput {
-  meta: CommandMeta!
-  slot: PoolSlotRef!
-}
-
-input PlacePieceInput {
-  meta: CommandMeta!
-  slot: PoolSlotRef!
-  position: PositionInput!
-  forceMod: String                  # FM 槽位的强制 mod
-}
-
-input GrantWinInput {
-  meta: CommandMeta!
-  team: TeamSide!
-}
-
-input ConfirmWinnerInput {
-  meta: CommandMeta!
-  team: TeamSide!
-}
-
-input BeginRobberyInput {
-  meta: CommandMeta!
-}
-
-input CompleteRobberyInput {
-  meta: CommandMeta!
-  sacrificePieceIds: [String!]!
-  targetPieceId: String!
-}
-
-input CancelRobberyInput {
-  meta: CommandMeta!
-}
-
-input DeclareTbInput {
-  meta: CommandMeta!
-  winner: TeamSide!
-}
-
-input SurrenderInput {
-  meta: CommandMeta!
-  team: TeamSide!
-}
-
-input UndoInput {
-  meta: CommandMeta!
-  targetActionId: ID!
-  reason: String!
-}
-
-# --- Result 类型 ---
-
-interface CommandResult {
-  success: Boolean!
-  match: Match
-  events: [DomainEventSnapshot!]!   # 预留: WebSocket 事件系统尚未实现，返回空数组
-  error: MatchError
+enum MatchErrorCode {
+  INVALID_REQUEST
+  AUTH_REQUIRED
+  USER_NOT_VERIFIED
+  USER_BANNED
+  GLOBAL_ROLE_REQUIRED
+  ROOM_ROLE_REQUIRED
+  ACTION_NOT_ALLOWED
+  RESOURCE_NOT_FOUND
+  MATCH_VERSION_CONFLICT
+  DUPLICATE_COMMAND_MISMATCH
+  INTERNAL_ERROR
+  MATCH_LIFECYCLE_CONFLICT
+  MATCH_PHASE_CONFLICT
+  NOT_ACTIVE_TEAM
+  INVALID_POOL_SLOT
+  POOL_SLOT_UNAVAILABLE
+  INVALID_BOARD_CELL
+  INVALID_MOD_ZONE
+  RESULT_NOT_PENDING
+  TIMER_EXPIRED
+  TIMER_PAUSED
+  TEAM_PAUSE_ALREADY_USED
+  ROBBERY_NOT_AVAILABLE
+  ROBBERY_REQUIREMENTS_NOT_MET
+  ALIGNMENT_OVERLAP
+  TB_NOT_AVAILABLE
+  SURRENDER_EVIDENCE_INVALID
 }
 
 type MatchError {
-  code: String!
+  code: MatchErrorCode!
   message: String!
-  field: String
+  currentVersion: UInt64
 }
 
-type BanPoolSlotResult implements CommandResult {
+type MatchCommandActor {
+  osuID: ID!
+  capability: MatchActorCapability!
+  team: TeamSide
+  adminOverride: Boolean!
+  refereeOverride: Boolean!
+}
+
+type MatchEventFact {
+  team: TeamSide
+  poolSlotID: ID
+  boardPieceID: ID
+  boardPieceIDs: [ID!]!
+  cell: ID
+  durationMilliseconds: Int
+  reason: String
+  requestID: ID
+  tbBasis: TBBasis
+  playerIDs: [ID!]!
+}
+
+type MatchCommandEvent {
+  eventId: ID!
+  schemaVersion: Int!
+  aggregateId: ID!
+  aggregateType: String!
+  sequence: UInt64!
+  resultingVersion: UInt64!
+  type: MatchEventType!
+  occurredAt: Time!
+  actor: MatchCommandActor!
+  fact: MatchEventFact!
+}
+
+type MatchCommandResult {
   success: Boolean!
-  match: Match
-  events: [DomainEventSnapshot!]!
+  commandId: String!
+  disposition: MatchCommandDisposition
+  previousVersion: UInt64
+  resultingVersion: UInt64
+  currentVersion: UInt64
+  snapshot: MatchSnapshot
+  events: [MatchCommandEvent!]!
   error: MatchError
 }
-
-type PlacePieceResult implements CommandResult {
-  success: Boolean!
-  match: Match
-  events: [DomainEventSnapshot!]!
-  error: MatchError
-}
-
-type CompleteRobberyResult implements CommandResult {
-  success: Boolean!
-  match: Match
-  events: [DomainEventSnapshot!]!
-  error: MatchError
-}
-
-type SimpleCommandResult implements CommandResult {
-  success: Boolean!
-  match: Match
-  events: [DomainEventSnapshot!]!
-  error: MatchError
-}
-
-# --- Mutation ---
 
 type Mutation {
-  # 棋盘操作 (文档 §12.1)
-  banPoolSlot(input: BanPoolSlotInput!): BanPoolSlotResult!
-  unbanPoolSlot(input: UnbanPoolSlotInput!): SimpleCommandResult!
-  placePiece(input: PlacePieceInput!): PlacePieceResult!
-  grantWinPermission(input: GrantWinInput!): SimpleCommandResult!
-  confirmPieceWinner(input: ConfirmWinnerInput!): SimpleCommandResult!
-  beginRobbery(input: BeginRobberyInput!): SimpleCommandResult!
-  completeRobbery(input: CompleteRobberyInput!): CompleteRobberyResult!
-  cancelRobbery(input: CancelRobberyInput!): SimpleCommandResult!
-
-  # 终局
-  declareTbWinner(input: DeclareTbInput!): SimpleCommandResult!
-  declareSurrender(input: SurrenderInput!): SimpleCommandResult!
-
-  # 回合控制
-  advanceTurn(input: CommandMeta!): SimpleCommandResult!
-  pauseMatch(input: CommandMeta!): SimpleCommandResult!
-  resumeMatch(input: CommandMeta!): SimpleCommandResult!
-
-  # 撤销
-  undoAction(input: UndoInput!): SimpleCommandResult!
+  startMatch(input: CommandMeta!): MatchCommandResult!
+  confirmIRCResult(input: ConfirmIRCResultInput!): MatchCommandResult!
+  rejectIRCObservation(matchId: ID!, observationId: ID!, reason: String!): Boolean!
+  retryIRCJob(input: RetryIRCJobInput!): Boolean!
+  retryMatchAutomation(input: RetryMatchAutomationInput!): Boolean!
+  retryBeatmapMetadata(input: RetryBeatmapMetadataInput!): Boolean!
+  banPoolSlot(input: BanPoolSlotInput!): MatchCommandResult!
+  refereeBanPoolSlot(input: RefereeBanPoolSlotInput!): MatchCommandResult!
+  placePiece(input: PlacePieceInput!): MatchCommandResult!
+  refereePlacePiece(input: RefereePlacePieceInput!): MatchCommandResult!
+  placeShiro(input: PlaceShiroInput!): MatchCommandResult!
+  refereePlaceShiro(input: RefereePlaceShiroInput!): MatchCommandResult!
+  robPiece(input: RobPieceInput!): MatchCommandResult!
+  refereeRobPiece(input: RefereeRobPieceInput!): MatchCommandResult!
+  confirmBeatmapResult(input: ConfirmBeatmapResultInput!): MatchCommandResult!
+  grantAdditionalTime(input: ReasonCommandInput!): MatchCommandResult!
+  calibrateTimer(input: CalibrateTimerInput!): MatchCommandResult!
+  pauseTimer(input: ReasonCommandInput!): MatchCommandResult!
+  resumeTimer(input: ReasonCommandInput!): MatchCommandResult!
+  suspendMatch(input: ReasonCommandInput!): MatchCommandResult!
+  resumeMatch(input: ReasonCommandInput!): MatchCommandResult!
+  skipCurrentAction(input: ReasonCommandInput!): MatchCommandResult!
+  abortMatch(input: ReasonCommandInput!): MatchCommandResult!
+  requestTb(input: RequestTbInput!): MatchCommandResult!
+  refereeRequestTb(input: RefereeRequestTbInput!): MatchCommandResult!
+  respondTbRequest(input: RespondTbRequestInput!): MatchCommandResult!
+  refereeRespondTbRequest(input: RefereeRespondTbRequestInput!): MatchCommandResult!
+  startTb(input: ReasonCommandInput!): MatchCommandResult!
+  confirmTbResult(input: ConfirmTbResultInput!): MatchCommandResult!
+  recordSurrender(input: RecordSurrenderInput!): MatchCommandResult!
 }

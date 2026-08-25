@@ -38,7 +38,7 @@ const LOGOUT_URL = `${API_BASE}/auth/logout`;
 
 export interface CachedUser {
   id: string;
-  onlineID: number;
+  onlineID: string;
   username: string;
   avatarUrl: string;
   roles: string[];
@@ -151,7 +151,63 @@ export const rooms = {
 
   startMatch: (id: string) =>
     restFetch(`/rooms/${id}/start-match`, { method: "POST" }),
+
+  /**
+   * Partial room metadata update (admin-only). `body` keys are camelCase and
+   * converted to the snake_case REST payload here; osu! IDs are sent as
+   * numbers ([]int64 on the backend). The backend PUT semantics only write
+   * fields that are present — there is no null-clearing.
+   */
+  updateMetadata: (id: string, body: RoomMetadataInput) =>
+    restFetch(`/rooms/${id}/metadata`, {
+      method: "PUT",
+      body: JSON.stringify(buildRoomMetadataPayload(body)),
+    }),
+
+  /**
+   * Assign (or clear, with `null`) the referee of a match room. Admin-only on
+   * the backend; the referee must hold the referee role.
+   */
+  setReferee: (id: string, refereeUserId: number | null) =>
+    restFetch(`/rooms/${id}/referee`, {
+      method: "PATCH",
+      body: JSON.stringify({ referee_user_id: refereeUserId }),
+    }),
 };
+
+/** camelCase input for `rooms.updateMetadata`. All fields optional. */
+export interface RoomMetadataInput {
+  name?: string;
+  round?: string;
+  /** ISO 8601 / RFC3339 string */
+  scheduledAt?: string;
+  /** osu! online id */
+  refereeUserId?: number;
+  /** osu! online id */
+  streamerUserId?: number;
+  /** osu! online id */
+  redLeader?: number;
+  /** osu! online id */
+  blueLeader?: number;
+  /** osu! online ids */
+  redPlayers?: number[];
+  /** osu! online ids */
+  bluePlayers?: number[];
+}
+
+function buildRoomMetadataPayload(body: RoomMetadataInput): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  if (body.name !== undefined) payload.name = body.name;
+  if (body.round !== undefined) payload.round = body.round;
+  if (body.scheduledAt !== undefined) payload.scheduled_at = body.scheduledAt;
+  if (body.refereeUserId !== undefined) payload.referee_user_id = body.refereeUserId;
+  if (body.streamerUserId !== undefined) payload.streamer_user_id = body.streamerUserId;
+  if (body.redLeader !== undefined) payload.red_leader = body.redLeader;
+  if (body.blueLeader !== undefined) payload.blue_leader = body.blueLeader;
+  if (body.redPlayers !== undefined) payload.red_players = body.redPlayers;
+  if (body.bluePlayers !== undefined) payload.blue_players = body.bluePlayers;
+  return payload;
+}
 
 // ---------------------------------------------------------------------------
 // REST — Admin: Beatmaps

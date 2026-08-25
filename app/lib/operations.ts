@@ -64,49 +64,56 @@ export const UsersDocument = graphql(`
 // ---------------------------------------------------------------------------
 
 export const RoomsDocument = graphql(`
-  query Rooms($type: RoomType, $page: Int, $perPage: Int) {
-    rooms(type: $type, page: $page, perPage: $perPage) {
+  query Rooms(
+    $type: RoomType
+    $search: String
+    $round: String
+    $status: MatchLifecycle
+    $relatedToMe: Boolean
+    $page: Int
+    $perPage: Int
+  ) {
+    rooms(
+      type: $type
+      search: $search
+      round: $round
+      status: $status
+      relatedToMe: $relatedToMe
+      page: $page
+      perPage: $perPage
+    ) {
       items {
         id
         code
         name
         type
+        round
+        scheduledAt
+        createdAt
+        ownerID
         owner {
           id
           onlineID
           username
           avatarUrl: avatarURL
         }
+        refereeUserID
+        matchID
         match {
-          id
+          snapshot {
+            lifecycle
+          }
         }
-        createdAt
-      }
-      page
-      perPage
-      total
-      totalPages
-    }
-  }
-`);
-
-// ---------------------------------------------------------------------------
-// Queries — Matches
-// ---------------------------------------------------------------------------
-
-export const MatchesDocument = graphql(`
-  query Matches($status: MatchStatus, $page: Int, $perPage: Int) {
-    matches(status: $status, page: $page, perPage: $perPage) {
-      items {
-        id
-        code
-        name
-        status
-        roomType
-        startedAt
-        turnState {
-          phase
-          activeTeam
+        settings {
+          redStrategistUserID
+          blueStrategistUserID
+          streamerUserID
+          redLeader
+          blueLeader
+          redPlayers
+          bluePlayers
+          mpLink
+          streamLink
         }
       }
       page
