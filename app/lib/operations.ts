@@ -994,3 +994,117 @@ export const BeatmapByOsuIdDocument = graphql(`
     }
   }
 `);
+
+// ---------------------------------------------------------------------------
+// Queries — Teams (admin)
+// ---------------------------------------------------------------------------
+
+export const TeamsDocument = graphql(`
+  query Teams($page: Int, $perPage: Int, $search: String) {
+    teams(page: $page, perPage: $perPage, search: $search) {
+      items {
+        id
+        name
+        description
+        seed
+        leaderID
+        leader {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        strategistID
+        strategist {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        playerIDs
+        players {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        isReady
+        createdAt
+        updatedAt
+      }
+      page
+      perPage
+      total
+      totalPages
+    }
+  }
+`);
+
+// ---------------------------------------------------------------------------
+// Queries — Mappools (admin)
+// ---------------------------------------------------------------------------
+
+export const MappoolsDocument = graphql(`
+  query Mappools($page: Int, $perPage: Int, $search: String) {
+    mappools(page: $page, perPage: $perPage, search: $search) {
+      items {
+        id
+        name
+        description
+        entries {
+          mod
+          index
+          beatmapID
+          beatmap {
+            id
+            onlineID
+            title
+            artist
+            version: difficultyName
+            difficultyRating: starRating
+          }
+          selectorID
+          selector {
+            id
+            onlineID
+            username
+          }
+          skill
+        }
+        createdAt
+        updatedAt
+      }
+      page
+      perPage
+      total
+      totalPages
+    }
+  }
+`);
+
+// ---------------------------------------------------------------------------
+// Queries — Users by osu! id (admin, fetch-through upsert)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch a user by osu! user id. The backend resolver goes through the 3-tier
+ * fetcher (Redis → Mongo → osu! API): a cache miss pulls the profile from the
+ * osu! API and upserts the document before returning it, so this doubles as
+ * the admin "add user" entry point (D4).
+ */
+export const UserByOsuIdDocument = graphql(`
+  query UserByOsuId($osuId: Int!) {
+    userByOsuId(osuId: $osuId) {
+      id
+      onlineID
+      username
+      avatarUrl: avatarURL
+      countryCode
+      roles
+      verifyStatus
+      isBanned
+      globalRank
+      pp
+    }
+  }
+`);

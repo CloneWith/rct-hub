@@ -25,6 +25,9 @@ import {
   UsersDocument,
   BeatmapsDocument,
   BeatmapByOsuIdDocument,
+  TeamsDocument,
+  MappoolsDocument,
+  UserByOsuIdDocument,
   AnnouncementsDocument,
   RoomsDocument,
   RoomByCodeDocument,
@@ -39,6 +42,9 @@ import type {
   UsersQuery,
   BeatmapsQuery,
   BeatmapByOsuIdQuery,
+  TeamsQuery,
+  MappoolsQuery,
+  UserByOsuIdQuery,
   AnnouncementsQuery,
   RoomsQuery,
   RoomByCodeQuery,
@@ -60,6 +66,18 @@ export type BeatmapItem = BeatmapsQuery["beatmaps"]["items"][number];
 
 /** Announcement list item (from `AnnouncementsQuery`). */
 export type AnnouncementItem = AnnouncementsQuery["announcements"]["items"][number];
+
+/** Team list item (from `TeamsQuery`). */
+export type TeamItem = TeamsQuery["teams"]["items"][number];
+
+/** Mappool list item (from `MappoolsQuery`). */
+export type MappoolItem = MappoolsQuery["mappools"]["items"][number];
+
+/** Mappool entry inside a `MappoolItem`. */
+export type MappoolEntryItem = NonNullable<MappoolItem["entries"][number]>;
+
+/** User fetched through `userByOsuId` (fetch-through upsert, D4). */
+export type FetchedUser = NonNullable<UserByOsuIdQuery["userByOsuId"]>;
 
 /** Generic paginated result — matches the GraphQL `*Page` shape. */
 export interface PagedResult<T> {
@@ -436,6 +454,203 @@ export function useDeleteBeatmap() {
     mutationFn: (id: string) =>
       restFetch(`/beatmaps/${id}`, { method: "DELETE" }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
+  });
+}
+
+// =========================================================================
+// Admin — Teams
+// =========================================================================
+
+/** Editable team form state shared by the create and edit modals. */
+export interface TeamForm {
+  name: string;
+  description: string;
+  seed: string;
+  leaderID: number | null;
+  strategistID: number | null;
+  playerIDs: number[];
+}
+
+/**
+ * Build the REST team payload. The form is always submitted wholesale: every
+ * field is sent so PATCH semantics ("omitted = unchanged") degrade to a full
+ * replace. `leader_id`/`strategist_id` are omitted when unset — the backend
+ * patch type does not support null-clearing.
+ */
+function buildTeamPayload(f: TeamForm): Record<string, unknown> {
+  const payload: Record<string, unknown> = { name: f.name };
+  payload.description = f.description;
+  payload.seed = f.seed;
+  if (f.leaderID != null) payload.leader_id = Number(f.leaderID);
+  if (f.strategistID != null) payload.strategist_id = Number(f.strategistID);
+  payload.players = f.playerIDs.map(Number);
+  return payload;
+}
+
+export function useTeams(enabled = true, page = 1, perPage = 20, search = "") {
+  const { data, isLoading } = useGraphQLPaged(
+    ["admin", "teams", page, perPage, search],
+    () => graphqlRequest(TeamsDocument, { page, perPage, search: search || undefined }),
+    (data) => data.teams,
+    enabled,
+  );
+  return {
+    data: data?.items ?? [],
+    pagination: data
+      ? { page: data.page, perPage: data.perPage, total: data.total, totalPages: data.totalPages }
+      : null,
+    isLoading,
+  };
+}
+
+export function useCreateTeam() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (body: TeamForm) =>
+      restFetch("/teams", { method: "POST", body: JSON.stringify(buildTeamPayload(body)) }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "teams"] }),
+  });
+}
+
+export function useUpdateTeam() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, ...body }: { id: string } & TeamForm) =>
+      restFetch(`/teams/${id}`, { method: "PATCH", body: JSON.stringify(buildTeamPayload(body)) }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "teams"] }),
+  });
+}
+
+export function useDeleteTeam() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (id: string) =>
+      restFetch(`/teams/${id}`, { method: "DELETE" }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "teams"] }),
+  });
+}
+
+// =========================================================================
+// Admin — Mappools
+// =========================================================================
+
+/**
+ * REST wire values for `domain.PieceMod`. The GraphQL enum uppercases
+ * everything (SHIRO) but the domain constant is mixed-case ("Shiro"), so
+ * REST submissions must be translated back.
+ */
+const REST_MOD_BY_ENUM: Record<string, string> = {
+  NM: "NM",
+  HD: "HD",
+  HR: "HR",
+  DT: "DT",
+  FM: "FM",
+  SHIRO: "Shiro",
+  TB: "TB",
+};
+
+/** Editable mappool entry in the admin form. `index` is derived on save. */
+export interface MappoolEntryForm {
+  mod: string; // GraphQL enum value (NM/HD/HR/DT/FM/SHIRO/TB)
+  beatmapID: number | null; // null for SHIRO slots
+  selectorID: number | null;
+  skill: string;
+}
+
+/** Editable mappool form state shared by the create and edit modals. */
+export interface MappoolForm {
+  name: string;
+  description: string;
+  entries: MappoolEntryForm[];
+}
+
+/**
+ * Build the REST mappool payload. Entry indexes are derived from the list
+ * order: entries are numbered 1..n per mod group following their appearance
+ * order, which keeps (mod, index) unique without asking the admin to manage
+ * indexes by hand.
+ */
+function buildMappoolPayload(f: MappoolForm): Record<string, unknown> {
+  const counters = new Map<string, number>();
+  const entries = f.entries.map((e) => {
+    const index = (counters.get(e.mod) ?? 0) + 1;
+    counters.set(e.mod, index);
+    const entry: Record<string, unknown> = {
+      mod: REST_MOD_BY_ENUM[e.mod] ?? e.mod,
+      index,
+    };
+    if (e.beatmapID != null) entry.beatmap_id = Number(e.beatmapID);
+    if (e.selectorID != null) entry.selector_id = Number(e.selectorID);
+    if (e.skill) entry.skill = e.skill;
+    return entry;
+  });
+  return { name: f.name, description: f.description, entries };
+}
+
+export function useMappools(enabled = true, page = 1, perPage = 20, search = "") {
+  const { data, isLoading } = useGraphQLPaged(
+    ["admin", "mappools", page, perPage, search],
+    () => graphqlRequest(MappoolsDocument, { page, perPage, search: search || undefined }),
+    (data) => data.mappools,
+    enabled,
+  );
+  return {
+    data: data?.items ?? [],
+    pagination: data
+      ? { page: data.page, perPage: data.perPage, total: data.total, totalPages: data.totalPages }
+      : null,
+    isLoading,
+  };
+}
+
+export function useCreateMappool() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (body: MappoolForm) =>
+      restFetch("/mappools", { method: "POST", body: JSON.stringify(buildMappoolPayload(body)) }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "mappools"] }),
+  });
+}
+
+export function useUpdateMappool() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, ...body }: { id: string } & MappoolForm) =>
+      restFetch(`/mappools/${id}`, { method: "PATCH", body: JSON.stringify(buildMappoolPayload(body)) }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "mappools"] }),
+  });
+}
+
+export function useDeleteMappool() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (id: string) =>
+      restFetch(`/mappools/${id}`, { method: "DELETE" }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "mappools"] }),
+  });
+}
+
+// =========================================================================
+// Admin — Users (add via osu! id)
+// =========================================================================
+
+/**
+ * Fetch a user by osu! user id through the 3-tier fetcher
+ * (Redis → Mongo → osu! API). A cache miss pulls the profile from the osu!
+ * API and upserts the document, so this doubles as the admin "add user"
+ * action (D4): the user list is invalidated to surface the new row.
+ */
+export function useFetchUserByOsuId() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: async (osuId: number): Promise<FetchedUser> => {
+      const res = await graphqlRequest(UserByOsuIdDocument, { osuId });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      const user = res.data?.userByOsuId;
+      if (!user) throw new Error("User not found");
+      return user;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 }
 

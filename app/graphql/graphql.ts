@@ -605,6 +605,31 @@ export type BeatmapByOsuIdQueryVariables = Exact<{
 
 export type BeatmapByOsuIdQuery = { beatmapByOsuId: { id: string, onlineID: string, title: string, artist: string, bpm: number, status: string, modString: string, modIndex: number, version: string, difficultyRating: number, coverUrl: string } | null };
 
+export type TeamsQueryVariables = Exact<{
+  page?: number | null | undefined;
+  perPage?: number | null | undefined;
+  search?: string | null | undefined;
+}>;
+
+
+export type TeamsQuery = { teams: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, name: string, description: string | null, seed: string | null, leaderID: number | null, strategistID: number | null, playerIDs: Array<number>, isReady: boolean, createdAt: string, updatedAt: string, leader: { id: string, onlineID: string, username: string, avatarUrl: string } | null, strategist: { id: string, onlineID: string, username: string, avatarUrl: string } | null, players: Array<{ id: string, onlineID: string, username: string, avatarUrl: string }> }> } };
+
+export type MappoolsQueryVariables = Exact<{
+  page?: number | null | undefined;
+  perPage?: number | null | undefined;
+  search?: string | null | undefined;
+}>;
+
+
+export type MappoolsQuery = { mappools: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, name: string, description: string | null, createdAt: string, updatedAt: string, entries: Array<{ mod: PieceMod, index: number, beatmapID: number | null, selectorID: number | null, skill: string | null, beatmap: { id: string, onlineID: string, title: string, artist: string, version: string, difficultyRating: number } | null, selector: { id: string, onlineID: string, username: string } | null }> }> } };
+
+export type UserByOsuIdQueryVariables = Exact<{
+  osuId: number;
+}>;
+
+
+export type UserByOsuIdQuery = { userByOsuId: { id: string, onlineID: string, username: string, countryCode: string, roles: Array<UserRole>, verifyStatus: VerifyStatus, isBanned: boolean, globalRank: number | null, pp: number | null, avatarUrl: string } };
+
 export class TypedDocumentString<TResult, TVariables>
   extends String
   implements DocumentTypeDecoration<TResult, TVariables>
@@ -1498,3 +1523,96 @@ export const BeatmapByOsuIdDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<BeatmapByOsuIdQuery, BeatmapByOsuIdQueryVariables>;
+export const TeamsDocument = new TypedDocumentString(`
+    query Teams($page: Int, $perPage: Int, $search: String) {
+  teams(page: $page, perPage: $perPage, search: $search) {
+    items {
+      id
+      name
+      description
+      seed
+      leaderID
+      leader {
+        id
+        onlineID
+        username
+        avatarUrl: avatarURL
+      }
+      strategistID
+      strategist {
+        id
+        onlineID
+        username
+        avatarUrl: avatarURL
+      }
+      playerIDs
+      players {
+        id
+        onlineID
+        username
+        avatarUrl: avatarURL
+      }
+      isReady
+      createdAt
+      updatedAt
+    }
+    page
+    perPage
+    total
+    totalPages
+  }
+}
+    `) as unknown as TypedDocumentString<TeamsQuery, TeamsQueryVariables>;
+export const MappoolsDocument = new TypedDocumentString(`
+    query Mappools($page: Int, $perPage: Int, $search: String) {
+  mappools(page: $page, perPage: $perPage, search: $search) {
+    items {
+      id
+      name
+      description
+      entries {
+        mod
+        index
+        beatmapID
+        beatmap {
+          id
+          onlineID
+          title
+          artist
+          version: difficultyName
+          difficultyRating: starRating
+        }
+        selectorID
+        selector {
+          id
+          onlineID
+          username
+        }
+        skill
+      }
+      createdAt
+      updatedAt
+    }
+    page
+    perPage
+    total
+    totalPages
+  }
+}
+    `) as unknown as TypedDocumentString<MappoolsQuery, MappoolsQueryVariables>;
+export const UserByOsuIdDocument = new TypedDocumentString(`
+    query UserByOsuId($osuId: Int!) {
+  userByOsuId(osuId: $osuId) {
+    id
+    onlineID
+    username
+    avatarUrl: avatarURL
+    countryCode
+    roles
+    verifyStatus
+    isBanned
+    globalRank
+    pp
+  }
+}
+    `) as unknown as TypedDocumentString<UserByOsuIdQuery, UserByOsuIdQueryVariables>;
