@@ -22,6 +22,9 @@ export default function BoardGrid({
   children,
   highlightedCells,
   robTargetIDs,
+  placedPieces,
+  wonPieces,
+  robbedPieces,
   onCellClick,
 }: {
   board: WSBoard | null;
@@ -30,6 +33,10 @@ export default function BoardGrid({
   highlightedCells?: ReadonlySet<string>;
   /** Piece ids that are valid robbery targets (analysis.robberyPlans). */
   robTargetIDs?: ReadonlySet<string>;
+  /** Transient animation sets (useMatchAnimations) — shared classes with overlay. */
+  placedPieces?: ReadonlySet<string>;
+  wonPieces?: ReadonlySet<string>;
+  robbedPieces?: ReadonlySet<string>;
   onCellClick?: (cell: string) => void;
 }) {
   // Cells are delivered row-major (A1..D4); a 4-column grid reproduces the
@@ -48,6 +55,14 @@ export default function BoardGrid({
           let ring = "";
           if (robTarget) ring = "ring-2 ring-warning/80";
           else if (highlighted) ring = "ring-2 ring-success/80";
+
+          const piece = cell?.piece;
+          let animClass = "";
+          if (piece) {
+            if (placedPieces?.has(piece.id)) animClass = "rcth-anim-pop";
+            else if (wonPieces?.has(piece.id)) animClass = "rcth-anim-win";
+            else if (robbedPieces?.has(piece.id)) animClass = "rcth-anim-rob";
+          }
 
           return (
             <div
@@ -70,9 +85,9 @@ export default function BoardGrid({
               <span className="absolute left-1.5 top-1 text-[0.6rem] font-medium text-foreground/25">
                 {cell?.cell}
               </span>
-              {cell?.piece && (
-                <div className="h-[72%] w-[72%]">
-                  <ChessPiece piece={cell.piece} />
+              {piece && (
+                <div className={`h-[72%] w-[72%] ${animClass}`}>
+                  <ChessPiece piece={piece} />
                 </div>
               )}
             </div>

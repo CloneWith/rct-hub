@@ -30,27 +30,10 @@ import StreamerBadge from "./components/StreamerBadge";
 import StreamerPanel from "./components/StreamerPanel";
 import { loadOverlayLayout, saveOverlayLayout, type OverlayLayout } from "./lib/layouts";
 import { useIpcBridge } from "./lib/useIpcBridge";
-import {
-  loadSoundEnabled,
-  resultReasonLabel,
-  saveSoundEnabled,
-  useOverlayAnimations,
-} from "./lib/useOverlayAnimations";
+import { loadSoundEnabled, saveSoundEnabled } from "../../rooms/[code]/match/lib/sounds";
+import { resultReasonLabel, useOverlayAnimations } from "./lib/useOverlayAnimations";
 
-/** 获胜横幅与 WS 状态条的动画 keyframes（本地注入，不动全局 CSS）。 */
-const OVERLAY_UI_CSS = `
-@keyframes rcth-flash-in {
-  0%   { opacity: 0; transform: scale(0.92); }
-  30%  { opacity: 1; transform: scale(1.04); }
-  100% { opacity: 1; transform: scale(1); }
-}
-@keyframes rcth-banner-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
-}
-.rcth-flash-in { animation: rcth-flash-in 0.4s ease-out both; }
-.rcth-fade-out { animation: rcth-banner-out 0.6s ease-in 5.4s both; }
-`;
+/** 获胜横幅与 WS 状态条的动画类（共享 keyframes 已在 globals.css 定义）。 */
 
 const MOD_SHORT: Record<string, string> = {
   NM: "NM",
@@ -96,7 +79,6 @@ function WinFlash({ team, reason }: { team: TeamSide; reason: MatchResultReason 
   const color = TEAM_COLORS[team];
   return (
     <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-      <style>{OVERLAY_UI_CSS}</style>
       <div className="rcth-flash-in rcth-fade-out flex flex-col items-center gap-2 rounded-2xl border px-12 py-8 shadow-2xl"
         style={{ borderColor: `${color}66`, backgroundColor: `${color}1f` }}
       >
@@ -152,7 +134,6 @@ function OverlayStage({ room }: { room: RoomSetup }) {
 
   return (
     <div className="pointer-events-none fixed inset-0 flex flex-col gap-4 p-5">
-      <style>{OVERLAY_UI_CSS}</style>
 
       {anims.winnerFlash && (
         <WinFlash team={anims.winnerFlash.team} reason={anims.winnerFlash.reason} />

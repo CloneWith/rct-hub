@@ -17,12 +17,14 @@ import BoardGrid from "./components/board/BoardGrid";
 import MapPoolPanel, { type PoolBeatmapMeta } from "./components/pool/MapPoolPanel";
 import MatchHeader from "./components/info/MatchHeader";
 import Countdown from "./components/info/Countdown";
+import WinFlash from "./components/info/WinFlash";
 import ConnectionBanner from "./components/ConnectionBanner";
 import NarrowScreenGuard from "./components/NarrowScreenGuard";
 import MatchSectionErrorBoundary from "./components/MatchSectionErrorBoundary";
 import { LIFECYCLE_LABELS } from "./lib/visuals";
 import { useStrategistInteractions } from "./lib/useStrategistInteractions";
 import { useRefereeInteractions } from "./lib/useRefereeInteractions";
+import { useMatchAnimations } from "./lib/useMatchAnimations";
 import type { MatchLifecycle, MatchPhase } from "./lib/ws-protocol";
 
 function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchByCode>["data"]> }) {
@@ -30,6 +32,7 @@ function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchBy
   const snapshot = live ?? null;
   const interactions = useStrategistInteractions(match);
   const referee = useRefereeInteractions(match);
+  const animations = useMatchAnimations();
 
   const fallback = {
     lifecycle: match.snapshot.lifecycle as MatchLifecycle,
@@ -62,6 +65,9 @@ function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchBy
     <MatchLiveProvider matchId={match.id}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col gap-3 p-4">
         <ConnectionBanner />
+        {animations.winnerFlash && (
+          <WinFlash team={animations.winnerFlash.team} reason={animations.winnerFlash.reason} />
+        )}
         <MatchHeader
           matchName={match.name}
           roomLabel={roomLabel || null}
@@ -118,6 +124,9 @@ function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchBy
                 board={snapshot?.board ?? null}
                 highlightedCells={interactions.boardProps.highlightedCells}
                 robTargetIDs={interactions.boardProps.robTargetIDs}
+                placedPieces={animations.placedPieces}
+                wonPieces={animations.wonPieces}
+                robbedPieces={animations.robbedPieces}
                 onCellClick={interactions.boardProps.onCellClick}
               />
             </MatchSectionErrorBoundary>

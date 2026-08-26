@@ -31,6 +31,7 @@ import {
   robPiece,
 } from "./commands";
 import { cellToPosition } from "./board";
+import { loadSoundEnabled, playEffect } from "./sounds";
 import {
   newTbRequestId,
   useMatchCommand,
@@ -152,6 +153,10 @@ export function useStrategistInteractions(match: MatchByCodeResult) {
         analysis.shiroCells.includes(cell)
       ) {
         void shiro.mutate({ position: pos });
+      } else {
+        // Clicked a cell that is neither a robbery target nor a legal drop —
+        // give the actor immediate feedback (legacy `unavailable` sample).
+        if (loadSoundEnabled()) playEffect("unavailable");
       }
     },
     [robTarget, place, shiro, robTargetIDs, analysis, snapshot, selectedSlotID],

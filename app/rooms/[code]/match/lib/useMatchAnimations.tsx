@@ -1,37 +1,27 @@
 "use client";
 
 /**
- * useOverlayAnimations — domain-event-driven animation layer (shared
- * philosophy with the board room, roadmap §3.7).
+ * useMatchAnimations — domain-event-driven animation layer for the board
+ * room page (roadmap §3.7; the overlay uses a superset with the full-screen
+ * winner flash in `useOverlayAnimations`).
  *
- * Every animation is derived from the WS `lastEvent` and self-clears after a
- * short window; rendering always falls back to the authoritative snapshot.
- * Late joiners receive a fresh snapshot with NO animation replay (a flashing
- * board on load would be noise), but the finished-result banner still shows
- * statically.
+ * Derives transient animation sets from the WS `lastEvent` and self-clears
+ * them after a short window; rendering always falls back to the authoritative
+ * snapshot. Late joiners receive a fresh snapshot with NO animation replay.
  *
- * Sounds come from the shared module (real WAVs migrated from the legacy
- * client, synth fallback); toggled by the streamer panel and persisted to
- * localStorage.
+ * Sound mapping (shared module, legacy client semantics):
+ * - PIECE_PLACED / SHIRO_PLACED → place.wav
+ * - PIECE_WON / PIECE_ROBBED    → update.wav (ownership update)
+ * - MATCH_FINISHED              → win (synth arpeggio)
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMatchLive } from "../../../rooms/[code]/match/MatchLiveProvider";
-import {
-  initSoundPref,
-  loadSoundEnabled,
-  playEffect,
-  preloadSounds,
-  saveSoundEnabled,
-} from "../../../rooms/[code]/match/lib/sounds";
-import type { MatchResultReason, TeamSide } from "../../../rooms/[code]/match/lib/ws-protocol";
+import { useMatchLive } from "../MatchLiveProvider";
+import { loadSoundEnabled, playEffect, preloadSounds } from "./sounds";
+import type { MatchResultReason, TeamSide } from "./ws-protocol";
 
-// `resultReasonLabel` lives in the shared animation module; re-exported here
-// for compatibility with the overlay page imports.
-export { resultReasonLabel } from "../../../rooms/[code]/match/lib/useMatchAnimations";
-
-export interface OverlayAnimationState {
-  /** Piece ids that just landed (scale-in). */
+export interface MatchAnimationState {
+  /** Piece ids that just landed (scale-in pop). */
   placedPieces: ReadonlySet<string>;
   /** Piece ids that just won (pulse ring). */
   wonPieces: ReadonlySet<string>;
@@ -46,23 +36,19 @@ const WIN_MS = 900;
 const ROB_MS = 900;
 const FLASH_MS = 6_000;
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
+const RESULT_REASON_LABELS: Record<MatchResultReason, string> = {
+  FOUR_ALIGNMENT: "四连达成",
+  TB: "TB 决胜",
+  SURRENDER: "对方认输",
+  STALEMATE_WON_COUNT: "流局计数",
+};
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
+export function resultReasonLabel(reason: MatchResultReason): string {
+  return RESULT_REASON_LABELS[reason] ?? reason;
+}
 
-export function useOverlayAnimations(): OverlayAnimationState {
+export function useMatchAnimations(): MatchAnimationState {
   const { lastEvent, snapshot } = useMatchLive();
-
-  // Migrate the legacy overlay sound key once (idempotent) and warm the
-  // asset cache so real WAVs play from the first event.
-  useEffect(() => {
-    initSoundPref();
-    if (loadSoundEnabled()) preloadSounds();
-  }, []);
 
   const [placedPieces, setPlaced] = useState<ReadonlySet<string>>(new Set());
   const [wonPieces, setWon] = useState<ReadonlySet<string>>(new Set());
@@ -83,6 +69,12 @@ export function useOverlayAnimations(): OverlayAnimationState {
     };
   }, []);
 
+  // Warm the asset cache once (fetch + decode WAVs) so the first real event
+  // plays the authentic samples instead of the synth fallback.
+  useEffect(() => {
+    if (loadSoundEnabled()) preloadSounds();
+  }, []);
+
   const arm = useCallback((fn: () => void, ms: number) => {
     timersRef.current.push(setTimeout(fn, ms));
   }, []);
@@ -94,9 +86,8 @@ export function useOverlayAnimations(): OverlayAnimationState {
     lastEventIdRef.current = event.id;
 
     // Defer state writes into the next animation frame: the effect body only
-    // observes `lastEvent` (an external-system subscription), while the actual
-    // animation state updates happen in the rAF callback — no cascading
-    // render, and one animation frame of latency is invisible on air.
+    // observes `lastEvent` (external subscription); the actual animation state
+    // updates happen in the rAF callback — no cascading render warnings.
     const raf = requestAnimationFrame(() => {
       const ids = event.fact.boardPieceIds ?? [];
       switch (event.type) {
@@ -111,14 +102,14 @@ export function useOverlayAnimations(): OverlayAnimationState {
         case "PIECE_WON": {
           if (ids.length === 0) break;
           setWon(new Set(ids));
-          if (soundOnRef.current) playEffect("win");
+          if (soundOnRef.current) playEffect("update");
           arm(() => setWon(new Set()), WIN_MS);
           break;
         }
         case "PIECE_ROBBED": {
           if (ids.length === 0) break;
           setRobbed(new Set(ids));
-          if (soundOnRef.current) playEffect("rob");
+          if (soundOnRef.current) playEffect("update");
           arm(() => setRobbed(new Set()), ROB_MS);
           break;
         }
