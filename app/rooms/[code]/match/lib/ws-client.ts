@@ -13,8 +13,8 @@
  * Commands NEVER go through this socket — all writes are GraphQL mutations.
  */
 
-import {
-  FATAL_ERROR_CODES,
+import { FATAL_ERROR_CODES } from "./ws-protocol";
+import type {
   WSOutboundMessage,
   WSSnapshot,
   WSPublicEvent,
