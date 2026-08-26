@@ -4,11 +4,27 @@ type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 import { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
+export type BanPoolSlotInput = {
+  meta: CommandMeta;
+  poolSlotId: string;
+};
+
 export type BeatmapMetadataStatus =
   | 'FAILED'
   | 'NOT_CONFIGURED'
   | 'PENDING'
   | 'READY';
+
+export type CommandMeta = {
+  commandId: string;
+  expectedVersion: string;
+  matchId: string | number;
+};
+
+export type ForceMod =
+  | 'HD'
+  | 'HR'
+  | 'NM';
 
 export type FormalMatchPhase =
   | 'BAN'
@@ -18,6 +34,60 @@ export type FormalMatchPhase =
   | 'TB_PREPARATION'
   | 'WAITING_FOR_RESULT';
 
+export type MatchAction =
+  | 'ABORT_MATCH'
+  | 'BAN_POOL_SLOT'
+  | 'CALIBRATE_TIMER'
+  | 'CONFIRM_BEATMAP_RESULT'
+  | 'CONFIRM_TB_RESULT'
+  | 'GRANT_ADDITIONAL_TIME'
+  | 'PAUSE_TIMER'
+  | 'PLACE_PIECE'
+  | 'PLACE_SHIRO'
+  | 'RECORD_SURRENDER'
+  | 'REQUEST_TB'
+  | 'RESPOND_TB_REQUEST'
+  | 'RESUME_MATCH'
+  | 'RESUME_TIMER'
+  | 'ROB_PIECE'
+  | 'SKIP_CURRENT_ACTION'
+  | 'START_MATCH'
+  | 'START_TB'
+  | 'SUSPEND_MATCH';
+
+export type MatchCommandDisposition =
+  | 'APPLIED'
+  | 'REPLAYED';
+
+export type MatchErrorCode =
+  | 'ACTION_NOT_ALLOWED'
+  | 'ALIGNMENT_OVERLAP'
+  | 'AUTH_REQUIRED'
+  | 'DUPLICATE_COMMAND_MISMATCH'
+  | 'GLOBAL_ROLE_REQUIRED'
+  | 'INTERNAL_ERROR'
+  | 'INVALID_BOARD_CELL'
+  | 'INVALID_MOD_ZONE'
+  | 'INVALID_POOL_SLOT'
+  | 'INVALID_REQUEST'
+  | 'MATCH_LIFECYCLE_CONFLICT'
+  | 'MATCH_PHASE_CONFLICT'
+  | 'MATCH_VERSION_CONFLICT'
+  | 'NOT_ACTIVE_TEAM'
+  | 'POOL_SLOT_UNAVAILABLE'
+  | 'RESOURCE_NOT_FOUND'
+  | 'RESULT_NOT_PENDING'
+  | 'ROBBERY_NOT_AVAILABLE'
+  | 'ROBBERY_REQUIREMENTS_NOT_MET'
+  | 'ROOM_ROLE_REQUIRED'
+  | 'SURRENDER_EVIDENCE_INVALID'
+  | 'TB_NOT_AVAILABLE'
+  | 'TEAM_PAUSE_ALREADY_USED'
+  | 'TIMER_EXPIRED'
+  | 'TIMER_PAUSED'
+  | 'USER_BANNED'
+  | 'USER_NOT_VERIFIED';
+
 export type MatchLifecycle =
   | 'ABORTED'
   | 'ADJUDICATION_REQUIRED'
@@ -25,6 +95,39 @@ export type MatchLifecycle =
   | 'READY'
   | 'RUNNING'
   | 'SUSPENDED';
+
+export type PlacePieceInput = {
+  meta: CommandMeta;
+  poolSlotId: string;
+  position: PositionInput;
+};
+
+export type PlaceShiroInput = {
+  meta: CommandMeta;
+  position: PositionInput;
+};
+
+export type PositionInput = {
+  col: number;
+  row: number;
+};
+
+export type RequestTbInput = {
+  meta: CommandMeta;
+  requestId: string;
+};
+
+export type RespondTbRequestInput = {
+  accept: boolean;
+  meta: CommandMeta;
+  requestId: string;
+};
+
+export type RobPieceInput = {
+  meta: CommandMeta;
+  sacrificeSets: Array<Array<string>>;
+  targetPieceId: string;
+};
 
 export type RoomType =
   | 'CASUAL'
@@ -78,7 +181,49 @@ export type MatchByCodeQueryVariables = Exact<{
 }>;
 
 
-export type MatchByCodeQuery = { matchByCode: { id: string, code: string, name: string, roomType: RoomType, room: { name: string, round: string } | null, pool: Array<{ poolSlotID: string, metadataStatus: BeatmapMetadataStatus, beatmap: { onlineID: string, title: string, artist: string, difficultyName: string, starRating: number, bpm: number, totalLength: number, coverUrl: string } | null }>, snapshot: { version: string, lifecycle: MatchLifecycle, phase: FormalMatchPhase, turn: number, activeTeam: TeamSide | null, wonCounts: { red: number, blue: number } } } | null };
+export type MatchByCodeQuery = { matchByCode: { id: string, code: string, name: string, roomType: RoomType, room: { name: string, round: string } | null, pool: Array<{ poolSlotID: string, metadataStatus: BeatmapMetadataStatus, beatmap: { onlineID: string, title: string, artist: string, difficultyName: string, starRating: number, bpm: number, totalLength: number, coverUrl: string } | null }>, snapshot: { version: string, lifecycle: MatchLifecycle, phase: FormalMatchPhase, turn: number, activeTeam: TeamSide | null, wonCounts: { red: number, blue: number } }, strategistView: { isMyTurn: boolean, myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null, captainView: { myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null } | null };
+
+export type BanPoolSlotMutationVariables = Exact<{
+  input: BanPoolSlotInput;
+}>;
+
+
+export type BanPoolSlotMutation = { banPoolSlot: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type PlacePieceMutationVariables = Exact<{
+  input: PlacePieceInput;
+}>;
+
+
+export type PlacePieceMutation = { placePiece: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type PlaceShiroMutationVariables = Exact<{
+  input: PlaceShiroInput;
+}>;
+
+
+export type PlaceShiroMutation = { placeShiro: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RobPieceMutationVariables = Exact<{
+  input: RobPieceInput;
+}>;
+
+
+export type RobPieceMutation = { robPiece: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RequestTbMutationVariables = Exact<{
+  input: RequestTbInput;
+}>;
+
+
+export type RequestTbMutation = { requestTb: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RespondTbRequestMutationVariables = Exact<{
+  input: RespondTbRequestInput;
+}>;
+
+
+export type RespondTbRequestMutation = { respondTbRequest: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
 
 export type AnnouncementsQueryVariables = Exact<{
   page?: number | null | undefined;
@@ -248,9 +393,156 @@ export const MatchByCodeDocument = new TypedDocumentString(`
         blue
       }
     }
+    strategistView {
+      isMyTurn
+      myTeam
+      analysis {
+        allowedActions
+        banPoolSlotIDs
+        legalPlacements {
+          poolSlotID
+          cell
+          forceMod
+        }
+        shiroCells
+        robberyPlans {
+          targetPieceID
+          sacrificeSets
+        }
+        pendingTBRequestID
+        canAcceptTBRequest
+        canRejectTBRequest
+        tbRequestTeams
+        tbResponseTeams
+      }
+    }
+    captainView {
+      myTeam
+      analysis {
+        allowedActions
+        banPoolSlotIDs
+        legalPlacements {
+          poolSlotID
+          cell
+          forceMod
+        }
+        shiroCells
+        robberyPlans {
+          targetPieceID
+          sacrificeSets
+        }
+        pendingTBRequestID
+        canAcceptTBRequest
+        canRejectTBRequest
+        tbRequestTeams
+        tbResponseTeams
+      }
+    }
   }
 }
     `) as unknown as TypedDocumentString<MatchByCodeQuery, MatchByCodeQueryVariables>;
+export const BanPoolSlotDocument = new TypedDocumentString(`
+    mutation BanPoolSlot($input: BanPoolSlotInput!) {
+  banPoolSlot(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<BanPoolSlotMutation, BanPoolSlotMutationVariables>;
+export const PlacePieceDocument = new TypedDocumentString(`
+    mutation PlacePiece($input: PlacePieceInput!) {
+  placePiece(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<PlacePieceMutation, PlacePieceMutationVariables>;
+export const PlaceShiroDocument = new TypedDocumentString(`
+    mutation PlaceShiro($input: PlaceShiroInput!) {
+  placeShiro(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<PlaceShiroMutation, PlaceShiroMutationVariables>;
+export const RobPieceDocument = new TypedDocumentString(`
+    mutation RobPiece($input: RobPieceInput!) {
+  robPiece(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RobPieceMutation, RobPieceMutationVariables>;
+export const RequestTbDocument = new TypedDocumentString(`
+    mutation RequestTb($input: RequestTbInput!) {
+  requestTb(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RequestTbMutation, RequestTbMutationVariables>;
+export const RespondTbRequestDocument = new TypedDocumentString(`
+    mutation RespondTbRequest($input: RespondTbRequestInput!) {
+  respondTbRequest(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RespondTbRequestMutation, RespondTbRequestMutationVariables>;
 export const AnnouncementsDocument = new TypedDocumentString(`
     query Announcements($page: Int, $perPage: Int) {
   announcements(page: $page, perPage: $perPage) {

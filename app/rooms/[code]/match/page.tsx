@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Board screen (棋房) — M1 spectator/read-only layer.
+ * Board screen (棋房) — M1 spectator layer + M2 strategist/captain layer.
  *
  * Bootstrap: `matchByCode(roomCode)` provides identity, pool metadata and an
  * initial snapshot; the WS channel (`MatchLiveProvider`) takes over all live
- * state. Role-specific interaction panels (strategist/referee/streamer) are
- * layered on top of this same layout in later milestones.
+ * state. Role-specific interaction panels (strategist/captain now; referee in
+ * M3; streamer/overlay in M5) are layered on top of this same layout.
  */
 
 import { Suspense } from "react";
@@ -21,11 +21,13 @@ import ConnectionBanner from "./components/ConnectionBanner";
 import NarrowScreenGuard from "./components/NarrowScreenGuard";
 import MatchSectionErrorBoundary from "./components/MatchSectionErrorBoundary";
 import { LIFECYCLE_LABELS } from "./lib/visuals";
+import { useStrategistInteractions } from "./lib/useStrategistInteractions";
 import type { MatchLifecycle, MatchPhase } from "./lib/ws-protocol";
 
 function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchByCode>["data"]> }) {
   const { snapshot: live } = useMatchLive();
   const snapshot = live ?? null;
+  const interactions = useStrategistInteractions(match);
 
   const fallback = {
     lifecycle: match.snapshot.lifecycle as MatchLifecycle,
@@ -64,9 +66,12 @@ function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchBy
           snapshot={snapshot}
           fallback={fallback}
         />
+        <MatchSectionErrorBoundary name="phase-banner">
+          {interactions.resultBanner}
+        </MatchSectionErrorBoundary>
 
         <main className="grid flex-1 grid-cols-[280px_1fr_350px] gap-4">
-          {/* Left column — timer & meta */}
+          {/* Left column — timer, meta & actor actions */}
           <aside className="flex flex-col gap-3">
             <MatchSectionErrorBoundary name="countdown">
               <Countdown />
@@ -93,22 +98,41 @@ function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchBy
                 </p>
               )}
             </div>
+            <MatchSectionErrorBoundary name="strategist-bar">
+              {interactions.strategistBar}
+            </MatchSectionErrorBoundary>
+            <MatchSectionErrorBoundary name="captain-bar">
+              {interactions.captainBar}
+            </MatchSectionErrorBoundary>
           </aside>
 
           {/* Center — the board */}
           <section className="flex items-center justify-center">
             <MatchSectionErrorBoundary name="board">
-              <BoardGrid board={snapshot?.board ?? null} />
+              <BoardGrid
+                board={snapshot?.board ?? null}
+                highlightedCells={interactions.boardProps.highlightedCells}
+                robTargetIDs={interactions.boardProps.robTargetIDs}
+                onCellClick={interactions.boardProps.onCellClick}
+              />
             </MatchSectionErrorBoundary>
           </section>
 
           {/* Right — mappool */}
           <aside className="min-h-0">
             <MatchSectionErrorBoundary name="pool">
-              <MapPoolPanel poolSlots={snapshot?.poolSlots ?? null} poolMeta={poolMeta} />
+              <MapPoolPanel
+                poolSlots={snapshot?.poolSlots ?? null}
+                poolMeta={poolMeta}
+                selectableSlotIDs={interactions.poolProps.selectableSlotIDs}
+                selectedSlotID={interactions.poolProps.selectedSlotID}
+                onSelectSlot={interactions.poolProps.onSelectSlot}
+              />
             </MatchSectionErrorBoundary>
           </aside>
         </main>
+
+        {interactions.dialogs}
       </div>
     </MatchLiveProvider>
   );

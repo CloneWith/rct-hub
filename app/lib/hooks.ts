@@ -649,6 +649,61 @@ export type MatchByCodeResult = {
     activeTeam: string | null;
     wonCounts: { red: number; blue: number };
   };
+  /** Non-null when the current user is the strategist of this room. */
+  strategistView: MatchActorView | null;
+  /** Non-null when the current user is a team leader of this room. */
+  captainView: MatchActorView | null;
+};
+
+export type MatchAction =
+  | "START_MATCH"
+  | "BAN_POOL_SLOT"
+  | "PLACE_PIECE"
+  | "PLACE_SHIRO"
+  | "ROB_PIECE"
+  | "CONFIRM_BEATMAP_RESULT"
+  | "GRANT_ADDITIONAL_TIME"
+  | "CALIBRATE_TIMER"
+  | "PAUSE_TIMER"
+  | "RESUME_TIMER"
+  | "SUSPEND_MATCH"
+  | "RESUME_MATCH"
+  | "SKIP_CURRENT_ACTION"
+  | "ABORT_MATCH"
+  | "REQUEST_TB"
+  | "RESPOND_TB_REQUEST"
+  | "START_TB"
+  | "CONFIRM_TB_RESULT"
+  | "RECORD_SURRENDER";
+
+export type MatchLegalPlacement = {
+  poolSlotID: string;
+  cell: string;
+  forceMod: "NM" | "HD" | "HR" | null;
+};
+
+export type MatchRobberyPlan = {
+  targetPieceID: string;
+  sacrificeSets: string[][];
+};
+
+export type MatchActorAnalysis = {
+  allowedActions: MatchAction[];
+  banPoolSlotIDs: string[];
+  legalPlacements: MatchLegalPlacement[];
+  shiroCells: string[];
+  robberyPlans: MatchRobberyPlan[];
+  pendingTBRequestID: string | null;
+  canAcceptTBRequest: boolean;
+  canRejectTBRequest: boolean;
+  tbRequestTeams: ("RED" | "BLUE")[];
+  tbResponseTeams: ("RED" | "BLUE")[];
+};
+
+export type MatchActorView = {
+  isMyTurn?: boolean;
+  myTeam: "RED" | "BLUE";
+  analysis: MatchActorAnalysis;
 };
 
 /**

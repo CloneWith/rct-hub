@@ -40,6 +40,8 @@ export interface MatchLiveState {
 }
 
 interface MatchLiveContextValue extends MatchLiveState {
+  /** The subscribed match id (from the URL bootstrap query). */
+  matchId: string;
   /** Force an immediate resubscribe (e.g. manual retry button). */
   resync: () => void;
 }
@@ -126,10 +128,11 @@ export function MatchLiveProvider({
 
   const value = useMemo<MatchLiveContextValue>(
     () => ({
+      matchId,
       ...state,
       resync: () => clientRef.current?.resync(),
     }),
-    [state],
+    [matchId, state],
   );
 
   return <MatchLiveContext.Provider value={value}>{children}</MatchLiveContext.Provider>;

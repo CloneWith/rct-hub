@@ -171,6 +171,168 @@ export const MatchByCodeDocument = graphql(`
           blue
         }
       }
+      strategistView {
+        isMyTurn
+        myTeam
+        analysis {
+          allowedActions
+          banPoolSlotIDs
+          legalPlacements {
+            poolSlotID
+            cell
+            forceMod
+          }
+          shiroCells
+          robberyPlans {
+            targetPieceID
+            sacrificeSets
+          }
+          pendingTBRequestID
+          canAcceptTBRequest
+          canRejectTBRequest
+          tbRequestTeams
+          tbResponseTeams
+        }
+      }
+      captainView {
+        myTeam
+        analysis {
+          allowedActions
+          banPoolSlotIDs
+          legalPlacements {
+            poolSlotID
+            cell
+            forceMod
+          }
+          shiroCells
+          robberyPlans {
+            targetPieceID
+            sacrificeSets
+          }
+          pendingTBRequestID
+          canAcceptTBRequest
+          canRejectTBRequest
+          tbRequestTeams
+          tbResponseTeams
+        }
+      }
+    }
+  }
+`);
+
+// ---------------------------------------------------------------------------
+// Mutations — In-match commands (strategist / captain)
+//
+// Every command carries CommandMeta { matchId, expectedVersion, commandId }.
+// `commandId` must be a non-zero UUID; retries (network failures only) reuse
+// the same id for idempotency. A `MATCH_VERSION_CONFLICT` error carries
+// `currentVersion` — the command layer refreshes and may retry once.
+// ---------------------------------------------------------------------------
+
+export const BanPoolSlotDocument = graphql(`
+  mutation BanPoolSlot($input: BanPoolSlotInput!) {
+    banPoolSlot(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const PlacePieceDocument = graphql(`
+  mutation PlacePiece($input: PlacePieceInput!) {
+    placePiece(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const PlaceShiroDocument = graphql(`
+  mutation PlaceShiro($input: PlaceShiroInput!) {
+    placeShiro(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RobPieceDocument = graphql(`
+  mutation RobPiece($input: RobPieceInput!) {
+    robPiece(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RequestTbDocument = graphql(`
+  mutation RequestTb($input: RequestTbInput!) {
+    requestTb(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RespondTbRequestDocument = graphql(`
+  mutation RespondTbRequest($input: RespondTbRequestInput!) {
+    respondTbRequest(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
     }
   }
 `);
