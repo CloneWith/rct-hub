@@ -81,7 +81,12 @@ export type MatchEventType =
   | "TB_PREPARATION_STARTED"
   | "TB_STARTED"
   | "TB_RESULT_CONFIRMED"
-  | "SURRENDER_RECORDED";
+  | "SURRENDER_RECORDED"
+  | "MATCH_FINISHED"
+  | "STALEMATE_DETECTED"
+  | "ADJUDICATION_REQUIRED"
+  | "TIMER_STARTED"
+  | "TIMER_STOPPED";
 
 // ---------------------------------------------------------------------------
 // Snapshot (backend `realtime.snapshot`, camelCase JSON)

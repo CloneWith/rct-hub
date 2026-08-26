@@ -325,3 +325,12 @@ body {
 .piece-breathing {
   animation: piece-breath 1.6s ease-in-out infinite;
 }
+
+/* Overlay 直播页（/overlay/[code]）：透明背景 + 隐藏全局导航，仅该路由生效 */
+html.rcth-overlay body {
+  background: transparent !important;
+}
+html.rcth-overlay nav,
+html.rcth-overlay footer {
+  display: none !important;
+}
