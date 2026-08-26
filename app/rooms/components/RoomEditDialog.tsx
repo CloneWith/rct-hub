@@ -317,7 +317,11 @@ export default function RoomEditDialog({
                       <Select.Popover>
                         <ListBox>
                           {(["RED", "BLUE"] as const).map((side) => (
-                            <ListBox.Item key={side} id={side}>
+                            <ListBox.Item
+                              key={side}
+                              id={side}
+                              textValue={TEAM_SIDE_LABELS[side]}
+                            >
                               {TEAM_SIDE_LABELS[side]}
                             </ListBox.Item>
                           ))}
@@ -338,7 +342,11 @@ export default function RoomEditDialog({
                       <Select.Popover>
                         <ListBox>
                           {(["RED", "BLUE"] as const).map((side) => (
-                            <ListBox.Item key={side} id={side}>
+                            <ListBox.Item
+                              key={side}
+                              id={side}
+                              textValue={TEAM_SIDE_LABELS[side]}
+                            >
                               {TEAM_SIDE_LABELS[side]}
                             </ListBox.Item>
                           ))}
