@@ -27,6 +27,7 @@ import {
   BeatmapByOsuIdDocument,
   AnnouncementsDocument,
   RoomsDocument,
+  RoomByCodeDocument,
   MatchByCodeDocument,
   IrcConnectionStatusDocument,
   IrcObservationsDocument,
@@ -40,6 +41,7 @@ import type {
   BeatmapByOsuIdQuery,
   AnnouncementsQuery,
   RoomsQuery,
+  RoomByCodeQuery,
 } from "@/app/graphql/graphql";
 import type { UserRole, VerifyStatus, MatchLifecycle, RoomType } from "@/app/graphql/graphql";
 
@@ -79,7 +81,16 @@ function unwrap<T>(res: { data?: T; errors?: Array<{ message: string }> }): T {
 }
 
 function throwOnRestError<T>(res: RestResponse<T>): T {
-  if (!res.success) throw new Error(res.error ?? "Request failed");
+  if (!res.success) {
+    // Merge field-level validation details (e.g. start-match missing
+    // requirements) into the message so the toast maps the failure to the
+    // concrete fields instead of a generic "invalid input".
+    const detailText = (res.details ?? [])
+      .map((d) => d.message)
+      .filter((m): m is string => !!m)
+      .join("；");
+    throw new Error(detailText ? `${res.error ?? "Request failed"}：${detailText}` : (res.error ?? "Request failed"));
+  }
   return res.data as T;
 }
 
@@ -562,12 +573,43 @@ export function useRooms(
   };
 }
 
+/** Full room configuration for the pre-game setup page (M4). */
+export type RoomSetup = NonNullable<RoomByCodeQuery["roomByCode"]>;
+
+/**
+ * Full room by invite code. The pre-game setup page (M4) uses this instead of
+ * the list query because it needs the mappool, BP order and resolved member
+ * users. `enabled` mirrors the `useMatchByCode` convention (gated on login).
+ */
+export function useRoomByCode(code: string, enabled = true) {
+  const isClient = useIsClient();
+  return useQuery({
+    queryKey: ["room", code],
+    queryFn: () => graphqlRequest(RoomByCodeDocument, { code }).then((res) => unwrap(res)),
+    select: (res) => res.roomByCode,
+    enabled: isClient && enabled && code.length > 0,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
 /** Response of `POST /rooms` — the created room. */
 export interface CreatedRoom {
   id: string;
   code: string;
   name: string;
   type: string;
+}
+
+/**
+ * Invalidate both the room list (`["rooms"]`) and the setup page
+ * (`["room", code]` — prefix match) after a room mutation.
+ */
+function invalidateRoomQueries(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ["rooms"] });
+  void qc.invalidateQueries({ queryKey: ["room"] });
 }
 
 export function useCreateRoom() {
@@ -587,7 +629,7 @@ export function useUpdateRoomMetadata() {
   return useToastedMutation({
     mutationFn: ({ id, ...body }: RoomMetadataInput & { id: string }) =>
       rooms.updateMetadata(id, body).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+    onSuccess: () => invalidateRoomQueries(qc),
   });
 }
 
@@ -597,7 +639,87 @@ export function useSetRoomReferee() {
   return useToastedMutation({
     mutationFn: ({ id, refereeUserId }: { id: string; refereeUserId: number | null }) =>
       rooms.setReferee(id, refereeUserId).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Red/blue strategist assignment (PATCH /rooms/:id/strategists). */
+export function useSetRoomStrategists() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({
+      id,
+      redStrategistUserId,
+      blueStrategistUserId,
+    }: {
+      id: string;
+      redStrategistUserId: number | null;
+      blueStrategistUserId: number | null;
+    }) =>
+      rooms
+        .setStrategists(id, {
+          red_strategist_user_id: redStrategistUserId,
+          blue_strategist_user_id: blueStrategistUserId,
+        })
+        .then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Streamer assignment (PATCH /rooms/:id/streamer). */
+export function useSetRoomStreamer() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, streamerUserId }: { id: string; streamerUserId: number | null }) =>
+      rooms.setStreamer(id, { streamer_user_id: streamerUserId }).then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Pick/ban order (PATCH /rooms/:id/bp-order). */
+export function useSetRoomBpOrder() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({
+      id,
+      firstPick,
+      firstBan,
+    }: {
+      id: string;
+      firstPick: "red" | "blue";
+      firstBan: "red" | "blue";
+    }) =>
+      rooms.setBpOrder(id, { first_pick: firstPick, first_ban: firstBan }).then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Team rosters + leaders (PATCH /rooms/:id/players). */
+export function useSetRoomPlayers() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({
+      id,
+      redLeader,
+      blueLeader,
+      redPlayers,
+      bluePlayers,
+    }: {
+      id: string;
+      redLeader: number | null;
+      blueLeader: number | null;
+      redPlayers: number[];
+      bluePlayers: number[];
+    }) =>
+      rooms
+        .setPlayers(id, {
+          red_leader: redLeader,
+          blue_leader: blueLeader,
+          red_players: redPlayers,
+          blue_players: bluePlayers,
+        })
+        .then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
   });
 }
 
@@ -607,7 +729,27 @@ export function useSetRoomMPLink() {
   return useToastedMutation({
     mutationFn: ({ id, mpLink }: { id: string; mpLink: string }) =>
       rooms.setMpLink(id, { mp_link: mpLink }).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Stream link update (PATCH /rooms/:id/stream-link). */
+export function useSetRoomStreamLink() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, streamLink }: { id: string; streamLink: string }) =>
+      rooms.setStreamLink(id, { stream_link: streamLink }).then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Replace the full pre-game mappool (PATCH /rooms/:id/mappool). */
+export function useSetRoomMappool() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, pool }: { id: string; pool: Record<string, unknown> }) =>
+      rooms.setMappool(id, pool).then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
   });
 }
 
@@ -616,7 +758,7 @@ export function useStartRoomMatch() {
   const qc = useQueryClient();
   return useToastedMutation({
     mutationFn: (id: string) => rooms.startMatch(id).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+    onSuccess: () => invalidateRoomQueries(qc),
   });
 }
 

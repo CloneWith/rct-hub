@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Avatar,
   Button,
@@ -11,7 +12,7 @@ import {
   TextField,
   toast,
 } from "@heroui/react";
-import { Calendar, ExternalLink, Link2, Play, User } from "lucide-react";
+import { Calendar, ChevronRight, ExternalLink, Link2, Play, User } from "lucide-react";
 import type { AuthUser } from "@/app/lib/hooks";
 import { useSetRoomMPLink, useStartRoomMatch } from "@/app/lib/hooks";
 import {
@@ -79,6 +80,7 @@ export default function RoomCard({
   const [startOpen, setStartOpen] = useState(false);
   const [mpOpen, setMpOpen] = useState(false);
   const [mpInput, setMpInput] = useState("");
+  const router = useRouter();
 
   const startMatch = useStartRoomMatch();
   const setMpLink = useSetRoomMPLink();
@@ -116,19 +118,30 @@ export default function RoomCard({
     });
   };
 
+  // 未开赛 → 赛前配置页；已开赛 → 棋房。
+  const openRoomPage = () =>
+    router.push(room.matchID == null ? `/rooms/${room.code}` : `/rooms/${room.code}/match`);
+
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
       {/* ---- Header: name / code / badges ---- */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-start justify-between gap-2">
+        <button
+          type="button"
+          onClick={openRoomPage}
+          className="group flex items-start justify-between gap-2 text-left"
+        >
           <div className="min-w-0">
-            <div className="truncate font-semibold">{room.name}</div>
+            <div className="truncate font-semibold group-hover:text-primary">{room.name}</div>
             <div className="font-mono text-xs text-muted-foreground">{room.code}</div>
           </div>
-          <Chip size="sm" variant="soft" color={TONE_COLOR[status.tone]}>
-            {status.label}
-          </Chip>
-        </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Chip size="sm" variant="soft" color={TONE_COLOR[status.tone]}>
+              {status.label}
+            </Chip>
+            <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+          </div>
+        </button>
         <div className="flex flex-wrap items-center gap-1.5">
           <Chip size="sm" variant="soft" color="accent">
             {ROOM_TYPE_LABELS[room.type]}

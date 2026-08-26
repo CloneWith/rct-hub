@@ -178,6 +178,22 @@ export type MatchLifecycle =
   | 'RUNNING'
   | 'SUSPENDED';
 
+export type PieceMod =
+  | 'DT'
+  | 'FM'
+  | 'HD'
+  | 'HR'
+  | 'NM'
+  | 'SHIRO'
+  | 'TB';
+
+export type PieceState =
+  | 'BANNED'
+  | 'DEAD'
+  | 'NORMAL'
+  | 'PICKED'
+  | 'WON';
+
 export type PlacePieceInput = {
   meta: CommandMeta;
   poolSlotId: string;
@@ -323,7 +339,14 @@ export type RoomsQueryVariables = Exact<{
 }>;
 
 
-export type RoomsQuery = { rooms: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, code: string, name: string, type: RoomType, round: string, scheduledAt: string | null, createdAt: string, ownerID: string, refereeUserID: string | null, matchID: string | null, owner: { id: string, onlineID: string, username: string, avatarUrl: string } | null, match: { snapshot: { lifecycle: MatchLifecycle } } | null, settings: { redStrategistUserID: string | null, blueStrategistUserID: string | null, streamerUserID: string | null, redLeader: string | null, blueLeader: string | null, redPlayers: Array<string>, bluePlayers: Array<string>, mpLink: string | null, streamLink: string | null } }> } };
+export type RoomsQuery = { rooms: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, code: string, name: string, type: RoomType, round: string, scheduledAt: string | null, createdAt: string, ownerID: string, refereeUserID: string | null, matchID: string | null, owner: { id: string, onlineID: string, username: string, avatarUrl: string } | null, match: { snapshot: { lifecycle: MatchLifecycle } } | null, settings: { redStrategistUserID: string | null, blueStrategistUserID: string | null, streamerUserID: string | null, firstPick: TeamSide | null, firstBan: TeamSide | null, redLeader: string | null, blueLeader: string | null, redPlayers: Array<string>, bluePlayers: Array<string>, mpLink: string | null, streamLink: string | null } }> } };
+
+export type RoomByCodeQueryVariables = Exact<{
+  code: string;
+}>;
+
+
+export type RoomByCodeQuery = { roomByCode: { id: string, code: string, name: string, type: RoomType, round: string, scheduledAt: string | null, createdAt: string, ownerID: string, refereeUserID: string | null, matchID: string | null, owner: { id: string, onlineID: string, username: string, avatarUrl: string } | null, referee: { id: string, onlineID: string, username: string, avatarUrl: string } | null, match: { snapshot: { lifecycle: MatchLifecycle } } | null, settings: { redStrategistUserID: string | null, blueStrategistUserID: string | null, streamerUserID: string | null, firstPick: TeamSide | null, firstBan: TeamSide | null, redPlayers: Array<string>, bluePlayers: Array<string>, redLeader: string | null, blueLeader: string | null, mpLink: string | null, streamLink: string | null, redStrategist: { id: string, onlineID: string, username: string, avatarUrl: string } | null, blueStrategist: { id: string, onlineID: string, username: string, avatarUrl: string } | null, streamer: { id: string, onlineID: string, username: string, avatarUrl: string } | null, mappool: { slots: Array<{ mod: PieceMod, pieces: Array<{ mod: PieceMod, index: number, beatmapID: string | null, state: PieceState }> }> } } } | null };
 
 export type MatchByCodeQueryVariables = Exact<{
   code: string;
@@ -676,6 +699,8 @@ export const RoomsDocument = new TypedDocumentString(`
         redStrategistUserID
         blueStrategistUserID
         streamerUserID
+        firstPick
+        firstBan
         redLeader
         blueLeader
         redPlayers
@@ -691,6 +716,81 @@ export const RoomsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RoomsQuery, RoomsQueryVariables>;
+export const RoomByCodeDocument = new TypedDocumentString(`
+    query RoomByCode($code: String!) {
+  roomByCode(code: $code) {
+    id
+    code
+    name
+    type
+    round
+    scheduledAt
+    createdAt
+    ownerID
+    owner {
+      id
+      onlineID
+      username
+      avatarUrl: avatarURL
+    }
+    refereeUserID
+    referee {
+      id
+      onlineID
+      username
+      avatarUrl: avatarURL
+    }
+    matchID
+    match {
+      snapshot {
+        lifecycle
+      }
+    }
+    settings {
+      redStrategistUserID
+      redStrategist {
+        id
+        onlineID
+        username
+        avatarUrl: avatarURL
+      }
+      blueStrategistUserID
+      blueStrategist {
+        id
+        onlineID
+        username
+        avatarUrl: avatarURL
+      }
+      streamerUserID
+      streamer {
+        id
+        onlineID
+        username
+        avatarUrl: avatarURL
+      }
+      firstPick
+      firstBan
+      redPlayers
+      bluePlayers
+      redLeader
+      blueLeader
+      mpLink
+      streamLink
+      mappool {
+        slots {
+          mod
+          pieces {
+            mod
+            index
+            beatmapID
+            state
+          }
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RoomByCodeQuery, RoomByCodeQueryVariables>;
 export const MatchByCodeDocument = new TypedDocumentString(`
     query MatchByCode($code: String!) {
   matchByCode(code: $code) {

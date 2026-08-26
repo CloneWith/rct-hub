@@ -84,6 +84,12 @@ export interface RestResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  /**
+   * Field-level validation failures returned by the backend for
+   * `ValidationError`s (e.g. start-match missing requirements). Shape:
+   * `[{ field, rule, message }]`.
+   */
+  details?: Array<{ field: string; rule?: string; message?: string }>;
 }
 
 export async function restFetch<T>(
@@ -148,6 +154,18 @@ export const rooms = {
 
   setStreamLink: (id: string, body: Record<string, unknown>) =>
     restFetch(`/rooms/${id}/stream-link`, { method: "PATCH", body: JSON.stringify(body) }),
+
+  /**
+   * Replace the room's pre-game pool configuration (PATCH /rooms/:id/mappool).
+   * `pool` is a full `domain.Mappool` — `{ slots: { NM: [Piece...], HD: [...] } }`.
+   * The backend replaces the whole pool on every call, so callers must always
+   * send the complete slot list for every mod group.
+   */
+  setMappool: (id: string, pool: Record<string, unknown>) =>
+    restFetch(`/rooms/${id}/mappool`, {
+      method: "PATCH",
+      body: JSON.stringify({ mappool: pool }),
+    }),
 
   startMatch: (id: string) =>
     restFetch(`/rooms/${id}/start-match`, { method: "POST" }),

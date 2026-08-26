@@ -108,6 +108,8 @@ export const RoomsDocument = graphql(`
           redStrategistUserID
           blueStrategistUserID
           streamerUserID
+          firstPick
+          firstBan
           redLeader
           blueLeader
           redPlayers
@@ -120,6 +122,90 @@ export const RoomsDocument = graphql(`
       perPage
       total
       totalPages
+    }
+  }
+`);
+
+/**
+ * Full room configuration for the pre-game setup page (M4).
+ *
+ * Unlike the list query, this includes the mappool, BP order and resolved
+ * member users (strategists / referee / streamer) for display. The mappool
+ * `beatmapID` is a GraphQL `ID` (decimal string); the REST mappool payload
+ * expects numeric ids, so callers convert with `Number()` before saving.
+ */
+export const RoomByCodeDocument = graphql(`
+  query RoomByCode($code: String!) {
+    roomByCode(code: $code) {
+      id
+      code
+      name
+      type
+      round
+      scheduledAt
+      createdAt
+      ownerID
+      owner {
+        id
+        onlineID
+        username
+        avatarUrl: avatarURL
+      }
+      refereeUserID
+      referee {
+        id
+        onlineID
+        username
+        avatarUrl: avatarURL
+      }
+      matchID
+      match {
+        snapshot {
+          lifecycle
+        }
+      }
+      settings {
+        redStrategistUserID
+        redStrategist {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        blueStrategistUserID
+        blueStrategist {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        streamerUserID
+        streamer {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        firstPick
+        firstBan
+        redPlayers
+        bluePlayers
+        redLeader
+        blueLeader
+        mpLink
+        streamLink
+        mappool {
+          slots {
+            mod
+            pieces {
+              mod
+              index
+              beatmapID
+              state
+            }
+          }
+        }
+      }
     }
   }
 `);
