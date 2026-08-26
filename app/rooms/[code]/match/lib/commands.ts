@@ -21,12 +21,35 @@
 import { graphqlRequest } from "@/app/lib/api";
 import type { TypedDocumentString } from "@/app/graphql/graphql";
 import {
+  AbortMatchDocument,
   BanPoolSlotDocument,
+  CalibrateTimerDocument,
+  ConfirmBeatmapResultDocument,
+  ConfirmIRCResultDocument,
+  ConfirmTbResultDocument,
+  GrantAdditionalTimeDocument,
+  PauseTimerDocument,
   PlacePieceDocument,
   PlaceShiroDocument,
+  RecordSurrenderDocument,
+  RefereeBanPoolSlotDocument,
+  RefereePlacePieceDocument,
+  RefereePlaceShiroDocument,
+  RefereeRequestTbDocument,
+  RefereeRespondTbRequestDocument,
+  RefereeRobPieceDocument,
+  RejectIRCObservationDocument,
   RequestTbDocument,
   RespondTbRequestDocument,
+  ResumeMatchDocument,
+  ResumeTimerDocument,
+  RetryIRCJobDocument,
+  RetryMatchAutomationDocument,
   RobPieceDocument,
+  SkipCurrentActionDocument,
+  StartMatchDocument,
+  StartTbDocument,
+  SuspendMatchDocument,
 } from "@/app/lib/operations";
 import type { MatchErrorShape } from "./errors";
 import { matchErrorMessage } from "./errors";
@@ -167,6 +190,207 @@ export function respondTbRequest(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Referee command builders (M3)
+//
+// Proxy commands (`referee*`) act on behalf of a team: `actingTeam` records
+// the side, `reason` is mandatory for the audit trail. Everything still goes
+// through the same idempotent command layer (commandId/expectedVersion).
+// ---------------------------------------------------------------------------
+
+/** Action performed by a referee on behalf of one side. */
+export type ActingTeam = "RED" | "BLUE";
+
+// NOTE: a type alias (not an interface) on purpose — object literal /
+// intersection types get an implicit index signature, so `RefereeProxyArgs`
+// satisfies the `Record<string, unknown>` constraint in `useMatchCommand`.
+export type RefereeProxyArgs = CommandMetaArgs & {
+  actingTeam: ActingTeam;
+  reason: string;
+};
+
+export function startMatch(args: CommandMetaArgs): Promise<CommandResult> {
+  return submitCommand(StartMatchDocument, { input: metaOf(args) });
+}
+
+export function refereeBanPoolSlot(
+  args: RefereeProxyArgs & { poolSlotId: string },
+): Promise<CommandResult> {
+  return submitCommand(RefereeBanPoolSlotDocument, {
+    input: {
+      meta: metaOf(args),
+      actingTeam: args.actingTeam,
+      poolSlotId: args.poolSlotId,
+      reason: args.reason,
+    },
+  });
+}
+
+export function refereePlacePiece(
+  args: RefereeProxyArgs & { poolSlotId: string; position: { row: number; col: number } },
+): Promise<CommandResult> {
+  return submitCommand(RefereePlacePieceDocument, {
+    input: {
+      meta: metaOf(args),
+      actingTeam: args.actingTeam,
+      poolSlotId: args.poolSlotId,
+      position: args.position,
+      reason: args.reason,
+    },
+  });
+}
+
+export function refereePlaceShiro(
+  args: RefereeProxyArgs & { position: { row: number; col: number } },
+): Promise<CommandResult> {
+  return submitCommand(RefereePlaceShiroDocument, {
+    input: {
+      meta: metaOf(args),
+      actingTeam: args.actingTeam,
+      position: args.position,
+      reason: args.reason,
+    },
+  });
+}
+
+export function refereeRobPiece(
+  args: RefereeProxyArgs & { targetPieceId: string; sacrificeSets: string[][] },
+): Promise<CommandResult> {
+  return submitCommand(RefereeRobPieceDocument, {
+    input: {
+      meta: metaOf(args),
+      actingTeam: args.actingTeam,
+      targetPieceId: args.targetPieceId,
+      sacrificeSets: args.sacrificeSets,
+      reason: args.reason,
+    },
+  });
+}
+
+export function refereeRequestTb(
+  args: RefereeProxyArgs & { requestId: string },
+): Promise<CommandResult> {
+  return submitCommand(RefereeRequestTbDocument, {
+    input: {
+      meta: metaOf(args),
+      actingTeam: args.actingTeam,
+      requestId: args.requestId,
+      reason: args.reason,
+    },
+  });
+}
+
+export function refereeRespondTbRequest(
+  args: RefereeProxyArgs & { requestId: string; accept: boolean },
+): Promise<CommandResult> {
+  return submitCommand(RefereeRespondTbRequestDocument, {
+    input: {
+      meta: metaOf(args),
+      actingTeam: args.actingTeam,
+      requestId: args.requestId,
+      accept: args.accept,
+      reason: args.reason,
+    },
+  });
+}
+
+export function confirmBeatmapResult(
+  args: CommandMetaArgs & { boardPieceId: string; winningTeam: ActingTeam },
+): Promise<CommandResult> {
+  return submitCommand(ConfirmBeatmapResultDocument, {
+    input: { meta: metaOf(args), boardPieceId: args.boardPieceId, winningTeam: args.winningTeam },
+  });
+}
+
+export function confirmTbResult(
+  args: CommandMetaArgs & { winningTeam: ActingTeam },
+): Promise<CommandResult> {
+  return submitCommand(ConfirmTbResultDocument, {
+    input: { meta: metaOf(args), winningTeam: args.winningTeam },
+  });
+}
+
+export function grantAdditionalTime(
+  args: CommandMetaArgs & { reason: string },
+): Promise<CommandResult> {
+  return submitCommand(GrantAdditionalTimeDocument, {
+    input: { meta: metaOf(args), reason: args.reason },
+  });
+}
+
+export function calibrateTimer(
+  args: CommandMetaArgs & { remainingMilliseconds: number; reason: string },
+): Promise<CommandResult> {
+  return submitCommand(CalibrateTimerDocument, {
+    input: { meta: metaOf(args), remainingMilliseconds: args.remainingMilliseconds, reason: args.reason },
+  });
+}
+
+export function pauseTimer(args: CommandMetaArgs & { reason: string }): Promise<CommandResult> {
+  return submitCommand(PauseTimerDocument, { input: { meta: metaOf(args), reason: args.reason } });
+}
+
+export function resumeTimer(args: CommandMetaArgs & { reason: string }): Promise<CommandResult> {
+  return submitCommand(ResumeTimerDocument, { input: { meta: metaOf(args), reason: args.reason } });
+}
+
+export function suspendMatch(args: CommandMetaArgs & { reason: string }): Promise<CommandResult> {
+  return submitCommand(SuspendMatchDocument, { input: { meta: metaOf(args), reason: args.reason } });
+}
+
+export function resumeMatch(args: CommandMetaArgs & { reason: string }): Promise<CommandResult> {
+  return submitCommand(ResumeMatchDocument, { input: { meta: metaOf(args), reason: args.reason } });
+}
+
+export function skipCurrentAction(
+  args: CommandMetaArgs & { reason: string },
+): Promise<CommandResult> {
+  return submitCommand(SkipCurrentActionDocument, {
+    input: { meta: metaOf(args), reason: args.reason },
+  });
+}
+
+export function abortMatch(args: CommandMetaArgs & { reason: string }): Promise<CommandResult> {
+  return submitCommand(AbortMatchDocument, { input: { meta: metaOf(args), reason: args.reason } });
+}
+
+export function startTb(args: CommandMetaArgs & { reason: string }): Promise<CommandResult> {
+  return submitCommand(StartTbDocument, { input: { meta: metaOf(args), reason: args.reason } });
+}
+
+export function recordSurrender(
+  args: CommandMetaArgs & { surrenderingTeam: ActingTeam; confirmingPlayerIds: string[]; reason: string },
+): Promise<CommandResult> {
+  return submitCommand(RecordSurrenderDocument, {
+    input: {
+      meta: metaOf(args),
+      surrenderingTeam: args.surrenderingTeam,
+      confirmingPlayerIds: args.confirmingPlayerIds,
+      reason: args.reason,
+    },
+  });
+}
+
+/**
+ * Confirm an IRC-suggested result. Unlike the other commands, the input is
+ * FLAT (`ConfirmIRCResultInput`), because the observation claim binds the
+ * commandId — the meta fields sit at the top level of the input.
+ */
+export function confirmIrcResult(
+  args: CommandMetaArgs & { observationId: string; boardPieceId: string; winningTeam: ActingTeam },
+): Promise<CommandResult> {
+  return submitCommand(ConfirmIRCResultDocument, {
+    input: {
+      matchId: args.matchId,
+      expectedVersion: args.expectedVersion,
+      commandId: args.commandId,
+      observationId: args.observationId,
+      boardPieceId: args.boardPieceId,
+      winningTeam: args.winningTeam,
+    },
+  });
+}
+
 function metaOf(args: CommandMetaArgs): CommandMetaArgs {
   return {
     matchId: args.matchId,
@@ -185,4 +409,46 @@ export function isVersionConflict(error?: MatchErrorShape): boolean {
 
 export function isReplay(result: CommandResult): boolean {
   return result.disposition === "REPLAYED";
+}
+
+// ---------------------------------------------------------------------------
+// Non-command referee utilities (plain Boolean mutations, no command id)
+// ---------------------------------------------------------------------------
+
+async function submitBooleanMutation<TVariables>(
+  doc: TypedDocumentString<{ [k: string]: boolean }, TVariables>,
+  variables: TVariables,
+): Promise<boolean> {
+  let res: Awaited<ReturnType<typeof graphqlRequest>>;
+  try {
+    res = await graphqlRequest(doc, variables);
+  } catch {
+    throw new CommandTransportError();
+  }
+  if (res.errors?.length) {
+    throw new CommandTransportError(res.errors[0].message);
+  }
+  const value = res.data ? Object.values(res.data)[0] : undefined;
+  return Boolean(value);
+}
+
+/** Reject a pending IRC observation (returns true on success). */
+export function rejectIrcObservation(
+  args: { matchId: string; observationId: string; reason: string },
+): Promise<boolean> {
+  return submitBooleanMutation(RejectIRCObservationDocument, args);
+}
+
+/** Retry a failed match automation event. */
+export function retryMatchAutomation(args: { matchId: string; eventId: string }): Promise<boolean> {
+  return submitBooleanMutation(RetryMatchAutomationDocument, {
+    input: { matchID: args.matchId, eventID: args.eventId },
+  });
+}
+
+/** Retry a failed IRC job. */
+export function retryIrcJob(args: { matchId: string; jobId: string }): Promise<boolean> {
+  return submitBooleanMutation(RetryIRCJobDocument, {
+    input: { matchID: args.matchId, jobID: args.jobId },
+  });
 }

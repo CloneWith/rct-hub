@@ -15,10 +15,36 @@ export type BeatmapMetadataStatus =
   | 'PENDING'
   | 'READY';
 
+export type CalibrateTimerInput = {
+  meta: CommandMeta;
+  reason: string;
+  remainingMilliseconds: number;
+};
+
 export type CommandMeta = {
   commandId: string;
   expectedVersion: string;
   matchId: string | number;
+};
+
+export type ConfirmBeatmapResultInput = {
+  boardPieceId: string;
+  meta: CommandMeta;
+  winningTeam: TeamSide;
+};
+
+export type ConfirmIrcResultInput = {
+  boardPieceId: string | number;
+  commandId: string;
+  expectedVersion: string;
+  matchId: string | number;
+  observationId: string | number;
+  winningTeam: TeamSide;
+};
+
+export type ConfirmTbResultInput = {
+  meta: CommandMeta;
+  winningTeam: TeamSide;
 };
 
 export type ForceMod =
@@ -33,6 +59,20 @@ export type FormalMatchPhase =
   | 'TB_PLAYING'
   | 'TB_PREPARATION'
   | 'WAITING_FOR_RESULT';
+
+export type IrcJobStatus =
+  | 'ACKNOWLEDGED'
+  | 'CANCELLED'
+  | 'FAILED'
+  | 'PENDING'
+  | 'SENDING'
+  | 'SENT';
+
+export type IrcReviewStatus =
+  | 'CONFIRMED'
+  | 'CONFIRMING'
+  | 'PENDING'
+  | 'REJECTED';
 
 export type MatchAction =
   | 'ABORT_MATCH'
@@ -54,6 +94,11 @@ export type MatchAction =
   | 'START_MATCH'
   | 'START_TB'
   | 'SUSPEND_MATCH';
+
+export type MatchActorCapability =
+  | 'CAPTAIN'
+  | 'REFEREE'
+  | 'STRATEGIST';
 
 export type MatchCommandDisposition =
   | 'APPLIED'
@@ -88,6 +133,43 @@ export type MatchErrorCode =
   | 'USER_BANNED'
   | 'USER_NOT_VERIFIED';
 
+export type MatchEventType =
+  | 'ACTION_SKIPPED'
+  | 'ADDITIONAL_TIME_GRANTED'
+  | 'ADJUDICATION_REQUIRED'
+  | 'BAN_PHASE_STARTED'
+  | 'BEATMAP_RESULT_CONFIRMED'
+  | 'MATCH_ABORTED'
+  | 'MATCH_FINISHED'
+  | 'MATCH_RESUMED'
+  | 'MATCH_STARTED'
+  | 'MATCH_SUSPENDED'
+  | 'PICK_PHASE_STARTED'
+  | 'PIECES_SACRIFICED'
+  | 'PIECE_PLACED'
+  | 'PIECE_ROBBED'
+  | 'PIECE_WON'
+  | 'POOL_SLOT_BANNED'
+  | 'REFEREE_PROXY_ACTION_RECORDED'
+  | 'RESULT_CONFIRMATION_REQUESTED'
+  | 'SHIRO_PLACED'
+  | 'STALEMATE_DETECTED'
+  | 'SURRENDER_RECORDED'
+  | 'TB_FORCED'
+  | 'TB_PREPARATION_STARTED'
+  | 'TB_REQUESTED'
+  | 'TB_REQUEST_ACCEPTED'
+  | 'TB_REQUEST_EXPIRED'
+  | 'TB_REQUEST_REJECTED'
+  | 'TB_RESULT_CONFIRMED'
+  | 'TB_STARTED'
+  | 'TIMER_CALIBRATED'
+  | 'TIMER_PAUSED'
+  | 'TIMER_RESUMED'
+  | 'TIMER_STARTED'
+  | 'TIMER_STOPPED'
+  | 'TURN_ADVANCED';
+
 export type MatchLifecycle =
   | 'ABORTED'
   | 'ADJUDICATION_REQUIRED'
@@ -112,6 +194,63 @@ export type PositionInput = {
   row: number;
 };
 
+export type ReasonCommandInput = {
+  meta: CommandMeta;
+  reason: string;
+};
+
+export type RecordSurrenderInput = {
+  confirmingPlayerIds: Array<string | number>;
+  meta: CommandMeta;
+  reason: string;
+  surrenderingTeam: TeamSide;
+};
+
+export type RefereeBanPoolSlotInput = {
+  actingTeam: TeamSide;
+  meta: CommandMeta;
+  poolSlotId: string;
+  reason: string;
+};
+
+export type RefereePlacePieceInput = {
+  actingTeam: TeamSide;
+  meta: CommandMeta;
+  poolSlotId: string;
+  position: PositionInput;
+  reason: string;
+};
+
+export type RefereePlaceShiroInput = {
+  actingTeam: TeamSide;
+  meta: CommandMeta;
+  position: PositionInput;
+  reason: string;
+};
+
+export type RefereeRequestTbInput = {
+  actingTeam: TeamSide;
+  meta: CommandMeta;
+  reason: string;
+  requestId: string;
+};
+
+export type RefereeRespondTbRequestInput = {
+  accept: boolean;
+  actingTeam: TeamSide;
+  meta: CommandMeta;
+  reason: string;
+  requestId: string;
+};
+
+export type RefereeRobPieceInput = {
+  actingTeam: TeamSide;
+  meta: CommandMeta;
+  reason: string;
+  sacrificeSets: Array<Array<string>>;
+  targetPieceId: string;
+};
+
 export type RequestTbInput = {
   meta: CommandMeta;
   requestId: string;
@@ -121,6 +260,16 @@ export type RespondTbRequestInput = {
   accept: boolean;
   meta: CommandMeta;
   requestId: string;
+};
+
+export type RetryIrcJobInput = {
+  jobID: string | number;
+  matchID: string | number;
+};
+
+export type RetryMatchAutomationInput = {
+  eventID: string | number;
+  matchID: string | number;
 };
 
 export type RobPieceInput = {
@@ -181,7 +330,7 @@ export type MatchByCodeQueryVariables = Exact<{
 }>;
 
 
-export type MatchByCodeQuery = { matchByCode: { id: string, code: string, name: string, roomType: RoomType, room: { name: string, round: string } | null, pool: Array<{ poolSlotID: string, metadataStatus: BeatmapMetadataStatus, beatmap: { onlineID: string, title: string, artist: string, difficultyName: string, starRating: number, bpm: number, totalLength: number, coverUrl: string } | null }>, snapshot: { version: string, lifecycle: MatchLifecycle, phase: FormalMatchPhase, turn: number, activeTeam: TeamSide | null, wonCounts: { red: number, blue: number } }, strategistView: { isMyTurn: boolean, myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null, captainView: { myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null } | null };
+export type MatchByCodeQuery = { matchByCode: { id: string, code: string, name: string, roomType: RoomType, room: { name: string, round: string, settings: { mpLink: string | null } } | null, pool: Array<{ poolSlotID: string, metadataStatus: BeatmapMetadataStatus, beatmap: { onlineID: string, title: string, artist: string, difficultyName: string, starRating: number, bpm: number, totalLength: number, coverUrl: string } | null }>, snapshot: { version: string, lifecycle: MatchLifecycle, phase: FormalMatchPhase, turn: number, activeTeam: TeamSide | null, wonCounts: { red: number, blue: number } }, strategistView: { isMyTurn: boolean, myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null, captainView: { myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null, refereeView: { matchID: string, suspensionReason: string | null, abortReason: string | null, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> }, auditLog: Array<{ actionId: string, sequence: string, commandType: string, previousVersion: string, resultingVersion: string, timestamp: string, reason: string | null, actor: { osuID: string, capability: MatchActorCapability, team: TeamSide | null, adminOverride: boolean, refereeOverride: boolean } }>, automationIssues: Array<{ eventID: string, sequence: string, eventType: MatchEventType, attempts: number, lastError: string, occurredAt: string }> } | null } | null };
 
 export type BanPoolSlotMutationVariables = Exact<{
   input: BanPoolSlotInput;
@@ -224,6 +373,191 @@ export type RespondTbRequestMutationVariables = Exact<{
 
 
 export type RespondTbRequestMutation = { respondTbRequest: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type StartMatchMutationVariables = Exact<{
+  input: CommandMeta;
+}>;
+
+
+export type StartMatchMutation = { startMatch: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RefereeBanPoolSlotMutationVariables = Exact<{
+  input: RefereeBanPoolSlotInput;
+}>;
+
+
+export type RefereeBanPoolSlotMutation = { refereeBanPoolSlot: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RefereePlacePieceMutationVariables = Exact<{
+  input: RefereePlacePieceInput;
+}>;
+
+
+export type RefereePlacePieceMutation = { refereePlacePiece: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RefereePlaceShiroMutationVariables = Exact<{
+  input: RefereePlaceShiroInput;
+}>;
+
+
+export type RefereePlaceShiroMutation = { refereePlaceShiro: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RefereeRobPieceMutationVariables = Exact<{
+  input: RefereeRobPieceInput;
+}>;
+
+
+export type RefereeRobPieceMutation = { refereeRobPiece: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RefereeRequestTbMutationVariables = Exact<{
+  input: RefereeRequestTbInput;
+}>;
+
+
+export type RefereeRequestTbMutation = { refereeRequestTb: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RefereeRespondTbRequestMutationVariables = Exact<{
+  input: RefereeRespondTbRequestInput;
+}>;
+
+
+export type RefereeRespondTbRequestMutation = { refereeRespondTbRequest: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type ConfirmBeatmapResultMutationVariables = Exact<{
+  input: ConfirmBeatmapResultInput;
+}>;
+
+
+export type ConfirmBeatmapResultMutation = { confirmBeatmapResult: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type ConfirmTbResultMutationVariables = Exact<{
+  input: ConfirmTbResultInput;
+}>;
+
+
+export type ConfirmTbResultMutation = { confirmTbResult: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type GrantAdditionalTimeMutationVariables = Exact<{
+  input: ReasonCommandInput;
+}>;
+
+
+export type GrantAdditionalTimeMutation = { grantAdditionalTime: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type CalibrateTimerMutationVariables = Exact<{
+  input: CalibrateTimerInput;
+}>;
+
+
+export type CalibrateTimerMutation = { calibrateTimer: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type PauseTimerMutationVariables = Exact<{
+  input: ReasonCommandInput;
+}>;
+
+
+export type PauseTimerMutation = { pauseTimer: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type ResumeTimerMutationVariables = Exact<{
+  input: ReasonCommandInput;
+}>;
+
+
+export type ResumeTimerMutation = { resumeTimer: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type SuspendMatchMutationVariables = Exact<{
+  input: ReasonCommandInput;
+}>;
+
+
+export type SuspendMatchMutation = { suspendMatch: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type ResumeMatchMutationVariables = Exact<{
+  input: ReasonCommandInput;
+}>;
+
+
+export type ResumeMatchMutation = { resumeMatch: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type SkipCurrentActionMutationVariables = Exact<{
+  input: ReasonCommandInput;
+}>;
+
+
+export type SkipCurrentActionMutation = { skipCurrentAction: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type AbortMatchMutationVariables = Exact<{
+  input: ReasonCommandInput;
+}>;
+
+
+export type AbortMatchMutation = { abortMatch: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type StartTbMutationVariables = Exact<{
+  input: ReasonCommandInput;
+}>;
+
+
+export type StartTbMutation = { startTb: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RecordSurrenderMutationVariables = Exact<{
+  input: RecordSurrenderInput;
+}>;
+
+
+export type RecordSurrenderMutation = { recordSurrender: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type ConfirmIrcResultMutationVariables = Exact<{
+  input: ConfirmIrcResultInput;
+}>;
+
+
+export type ConfirmIrcResultMutation = { confirmIRCResult: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type RejectIrcObservationMutationVariables = Exact<{
+  matchId: string | number;
+  observationId: string | number;
+  reason: string;
+}>;
+
+
+export type RejectIrcObservationMutation = { rejectIRCObservation: boolean };
+
+export type RetryMatchAutomationMutationVariables = Exact<{
+  input: RetryMatchAutomationInput;
+}>;
+
+
+export type RetryMatchAutomationMutation = { retryMatchAutomation: boolean };
+
+export type RetryIrcJobMutationVariables = Exact<{
+  input: RetryIrcJobInput;
+}>;
+
+
+export type RetryIrcJobMutation = { retryIRCJob: boolean };
+
+export type IrcConnectionStatusQueryVariables = Exact<{
+  matchId: string | number;
+}>;
+
+
+export type IrcConnectionStatusQuery = { ircConnectionStatus: { configured: boolean, connected: boolean, degraded: boolean, lastError: string | null } };
+
+export type IrcObservationsQueryVariables = Exact<{
+  matchId: string | number;
+  channel: string;
+}>;
+
+
+export type IrcObservationsQuery = { ircObservations: Array<{ id: string, channel: string, sender: string, command: string, raw: string, observedAt: string, reviewStatus: IrcReviewStatus, reviewReason: string | null, suggestedResult: { winningTeam: TeamSide, boardPieceID: string } | null }> };
+
+export type IrcJobsQueryVariables = Exact<{
+  matchId: string | number;
+}>;
+
+
+export type IrcJobsQuery = { ircJobs: Array<{ id: string, channel: string, kind: string, payload: string, status: IrcJobStatus, attempts: number, automaticRetry: boolean, nextTryAt: string | null, sentAt: string | null, ackDeadline: string | null, acknowledgedAt: string | null, lastError: string | null }> };
 
 export type AnnouncementsQueryVariables = Exact<{
   page?: number | null | undefined;
@@ -367,6 +701,9 @@ export const MatchByCodeDocument = new TypedDocumentString(`
     room {
       name
       round
+      settings {
+        mpLink
+      }
     }
     pool {
       poolSlotID
@@ -436,6 +773,54 @@ export const MatchByCodeDocument = new TypedDocumentString(`
         canRejectTBRequest
         tbRequestTeams
         tbResponseTeams
+      }
+    }
+    refereeView {
+      matchID
+      analysis {
+        allowedActions
+        banPoolSlotIDs
+        legalPlacements {
+          poolSlotID
+          cell
+          forceMod
+        }
+        shiroCells
+        robberyPlans {
+          targetPieceID
+          sacrificeSets
+        }
+        pendingTBRequestID
+        canAcceptTBRequest
+        canRejectTBRequest
+        tbRequestTeams
+        tbResponseTeams
+      }
+      suspensionReason
+      abortReason
+      auditLog(limit: 50) {
+        actionId
+        sequence
+        actor {
+          osuID
+          capability
+          team
+          adminOverride
+          refereeOverride
+        }
+        commandType
+        previousVersion
+        resultingVersion
+        timestamp
+        reason
+      }
+      automationIssues(limit: 50) {
+        eventID
+        sequence
+        eventType
+        attempts
+        lastError
+        occurredAt
       }
     }
   }
@@ -543,6 +928,411 @@ export const RespondTbRequestDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RespondTbRequestMutation, RespondTbRequestMutationVariables>;
+export const StartMatchDocument = new TypedDocumentString(`
+    mutation StartMatch($input: CommandMeta!) {
+  startMatch(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<StartMatchMutation, StartMatchMutationVariables>;
+export const RefereeBanPoolSlotDocument = new TypedDocumentString(`
+    mutation RefereeBanPoolSlot($input: RefereeBanPoolSlotInput!) {
+  refereeBanPoolSlot(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RefereeBanPoolSlotMutation, RefereeBanPoolSlotMutationVariables>;
+export const RefereePlacePieceDocument = new TypedDocumentString(`
+    mutation RefereePlacePiece($input: RefereePlacePieceInput!) {
+  refereePlacePiece(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RefereePlacePieceMutation, RefereePlacePieceMutationVariables>;
+export const RefereePlaceShiroDocument = new TypedDocumentString(`
+    mutation RefereePlaceShiro($input: RefereePlaceShiroInput!) {
+  refereePlaceShiro(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RefereePlaceShiroMutation, RefereePlaceShiroMutationVariables>;
+export const RefereeRobPieceDocument = new TypedDocumentString(`
+    mutation RefereeRobPiece($input: RefereeRobPieceInput!) {
+  refereeRobPiece(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RefereeRobPieceMutation, RefereeRobPieceMutationVariables>;
+export const RefereeRequestTbDocument = new TypedDocumentString(`
+    mutation RefereeRequestTb($input: RefereeRequestTbInput!) {
+  refereeRequestTb(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RefereeRequestTbMutation, RefereeRequestTbMutationVariables>;
+export const RefereeRespondTbRequestDocument = new TypedDocumentString(`
+    mutation RefereeRespondTbRequest($input: RefereeRespondTbRequestInput!) {
+  refereeRespondTbRequest(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RefereeRespondTbRequestMutation, RefereeRespondTbRequestMutationVariables>;
+export const ConfirmBeatmapResultDocument = new TypedDocumentString(`
+    mutation ConfirmBeatmapResult($input: ConfirmBeatmapResultInput!) {
+  confirmBeatmapResult(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ConfirmBeatmapResultMutation, ConfirmBeatmapResultMutationVariables>;
+export const ConfirmTbResultDocument = new TypedDocumentString(`
+    mutation ConfirmTbResult($input: ConfirmTbResultInput!) {
+  confirmTbResult(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ConfirmTbResultMutation, ConfirmTbResultMutationVariables>;
+export const GrantAdditionalTimeDocument = new TypedDocumentString(`
+    mutation GrantAdditionalTime($input: ReasonCommandInput!) {
+  grantAdditionalTime(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<GrantAdditionalTimeMutation, GrantAdditionalTimeMutationVariables>;
+export const CalibrateTimerDocument = new TypedDocumentString(`
+    mutation CalibrateTimer($input: CalibrateTimerInput!) {
+  calibrateTimer(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<CalibrateTimerMutation, CalibrateTimerMutationVariables>;
+export const PauseTimerDocument = new TypedDocumentString(`
+    mutation PauseTimer($input: ReasonCommandInput!) {
+  pauseTimer(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<PauseTimerMutation, PauseTimerMutationVariables>;
+export const ResumeTimerDocument = new TypedDocumentString(`
+    mutation ResumeTimer($input: ReasonCommandInput!) {
+  resumeTimer(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ResumeTimerMutation, ResumeTimerMutationVariables>;
+export const SuspendMatchDocument = new TypedDocumentString(`
+    mutation SuspendMatch($input: ReasonCommandInput!) {
+  suspendMatch(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<SuspendMatchMutation, SuspendMatchMutationVariables>;
+export const ResumeMatchDocument = new TypedDocumentString(`
+    mutation ResumeMatch($input: ReasonCommandInput!) {
+  resumeMatch(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ResumeMatchMutation, ResumeMatchMutationVariables>;
+export const SkipCurrentActionDocument = new TypedDocumentString(`
+    mutation SkipCurrentAction($input: ReasonCommandInput!) {
+  skipCurrentAction(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<SkipCurrentActionMutation, SkipCurrentActionMutationVariables>;
+export const AbortMatchDocument = new TypedDocumentString(`
+    mutation AbortMatch($input: ReasonCommandInput!) {
+  abortMatch(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<AbortMatchMutation, AbortMatchMutationVariables>;
+export const StartTbDocument = new TypedDocumentString(`
+    mutation StartTb($input: ReasonCommandInput!) {
+  startTb(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<StartTbMutation, StartTbMutationVariables>;
+export const RecordSurrenderDocument = new TypedDocumentString(`
+    mutation RecordSurrender($input: RecordSurrenderInput!) {
+  recordSurrender(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RecordSurrenderMutation, RecordSurrenderMutationVariables>;
+export const ConfirmIrcResultDocument = new TypedDocumentString(`
+    mutation ConfirmIRCResult($input: ConfirmIRCResultInput!) {
+  confirmIRCResult(input: $input) {
+    success
+    commandId
+    disposition
+    previousVersion
+    resultingVersion
+    currentVersion
+    error {
+      code
+      message
+      currentVersion
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ConfirmIrcResultMutation, ConfirmIrcResultMutationVariables>;
+export const RejectIrcObservationDocument = new TypedDocumentString(`
+    mutation RejectIRCObservation($matchId: ID!, $observationId: ID!, $reason: String!) {
+  rejectIRCObservation(
+    matchId: $matchId
+    observationId: $observationId
+    reason: $reason
+  )
+}
+    `) as unknown as TypedDocumentString<RejectIrcObservationMutation, RejectIrcObservationMutationVariables>;
+export const RetryMatchAutomationDocument = new TypedDocumentString(`
+    mutation RetryMatchAutomation($input: RetryMatchAutomationInput!) {
+  retryMatchAutomation(input: $input)
+}
+    `) as unknown as TypedDocumentString<RetryMatchAutomationMutation, RetryMatchAutomationMutationVariables>;
+export const RetryIrcJobDocument = new TypedDocumentString(`
+    mutation RetryIRCJob($input: RetryIRCJobInput!) {
+  retryIRCJob(input: $input)
+}
+    `) as unknown as TypedDocumentString<RetryIrcJobMutation, RetryIrcJobMutationVariables>;
+export const IrcConnectionStatusDocument = new TypedDocumentString(`
+    query IrcConnectionStatus($matchId: ID!) {
+  ircConnectionStatus(matchId: $matchId) {
+    configured
+    connected
+    degraded
+    lastError
+  }
+}
+    `) as unknown as TypedDocumentString<IrcConnectionStatusQuery, IrcConnectionStatusQueryVariables>;
+export const IrcObservationsDocument = new TypedDocumentString(`
+    query IrcObservations($matchId: ID!, $channel: String!) {
+  ircObservations(matchId: $matchId, channel: $channel) {
+    id
+    channel
+    sender
+    command
+    raw
+    observedAt
+    reviewStatus
+    reviewReason
+    suggestedResult {
+      winningTeam
+      boardPieceID
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<IrcObservationsQuery, IrcObservationsQueryVariables>;
+export const IrcJobsDocument = new TypedDocumentString(`
+    query IrcJobs($matchId: ID!) {
+  ircJobs(matchId: $matchId) {
+    id
+    channel
+    kind
+    payload
+    status
+    attempts
+    automaticRetry
+    nextTryAt
+    sentAt
+    ackDeadline
+    acknowledgedAt
+    lastError
+  }
+}
+    `) as unknown as TypedDocumentString<IrcJobsQuery, IrcJobsQueryVariables>;
 export const AnnouncementsDocument = new TypedDocumentString(`
     query Announcements($page: Int, $perPage: Int) {
   announcements(page: $page, perPage: $perPage) {

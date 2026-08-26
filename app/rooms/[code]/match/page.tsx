@@ -22,12 +22,14 @@ import NarrowScreenGuard from "./components/NarrowScreenGuard";
 import MatchSectionErrorBoundary from "./components/MatchSectionErrorBoundary";
 import { LIFECYCLE_LABELS } from "./lib/visuals";
 import { useStrategistInteractions } from "./lib/useStrategistInteractions";
+import { useRefereeInteractions } from "./lib/useRefereeInteractions";
 import type { MatchLifecycle, MatchPhase } from "./lib/ws-protocol";
 
 function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchByCode>["data"]> }) {
   const { snapshot: live } = useMatchLive();
   const snapshot = live ?? null;
   const interactions = useStrategistInteractions(match);
+  const referee = useRefereeInteractions(match);
 
   const fallback = {
     lifecycle: match.snapshot.lifecycle as MatchLifecycle,
@@ -104,6 +106,9 @@ function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchBy
             <MatchSectionErrorBoundary name="captain-bar">
               {interactions.captainBar}
             </MatchSectionErrorBoundary>
+            <MatchSectionErrorBoundary name="referee-console">
+              {referee.refereeBar}
+            </MatchSectionErrorBoundary>
           </aside>
 
           {/* Center — the board */}
@@ -133,6 +138,7 @@ function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchBy
         </main>
 
         {interactions.dialogs}
+        {referee.dialogs}
       </div>
     </MatchLiveProvider>
   );

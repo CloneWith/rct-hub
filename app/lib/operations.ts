@@ -145,6 +145,9 @@ export const MatchByCodeDocument = graphql(`
       room {
         name
         round
+        settings {
+          mpLink
+        }
       }
       pool {
         poolSlotID
@@ -214,6 +217,54 @@ export const MatchByCodeDocument = graphql(`
           canRejectTBRequest
           tbRequestTeams
           tbResponseTeams
+        }
+      }
+      refereeView {
+        matchID
+        analysis {
+          allowedActions
+          banPoolSlotIDs
+          legalPlacements {
+            poolSlotID
+            cell
+            forceMod
+          }
+          shiroCells
+          robberyPlans {
+            targetPieceID
+            sacrificeSets
+          }
+          pendingTBRequestID
+          canAcceptTBRequest
+          canRejectTBRequest
+          tbRequestTeams
+          tbResponseTeams
+        }
+        suspensionReason
+        abortReason
+        auditLog(limit: 50) {
+          actionId
+          sequence
+          actor {
+            osuID
+            capability
+            team
+            adminOverride
+            refereeOverride
+          }
+          commandType
+          previousVersion
+          resultingVersion
+          timestamp
+          reason
+        }
+        automationIssues(limit: 50) {
+          eventID
+          sequence
+          eventType
+          attempts
+          lastError
+          occurredAt
         }
       }
     }
@@ -333,6 +384,446 @@ export const RespondTbRequestDocument = graphql(`
         message
         currentVersion
       }
+    }
+  }
+`);
+
+// ---------------------------------------------------------------------------
+// Mutations — Referee commands (M3 referee console)
+//
+// Referee proxy commands take an `actingTeam` (the side being acted on
+// behalf of) plus a mandatory `reason` (audit trail). Timer/lifecycle
+// commands use `ReasonCommandInput`. `confirmIRCResult` is a flat input
+// (no nested `meta`) because the observation claim binds the commandId.
+// ---------------------------------------------------------------------------
+
+export const StartMatchDocument = graphql(`
+  mutation StartMatch($input: CommandMeta!) {
+    startMatch(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RefereeBanPoolSlotDocument = graphql(`
+  mutation RefereeBanPoolSlot($input: RefereeBanPoolSlotInput!) {
+    refereeBanPoolSlot(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RefereePlacePieceDocument = graphql(`
+  mutation RefereePlacePiece($input: RefereePlacePieceInput!) {
+    refereePlacePiece(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RefereePlaceShiroDocument = graphql(`
+  mutation RefereePlaceShiro($input: RefereePlaceShiroInput!) {
+    refereePlaceShiro(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RefereeRobPieceDocument = graphql(`
+  mutation RefereeRobPiece($input: RefereeRobPieceInput!) {
+    refereeRobPiece(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RefereeRequestTbDocument = graphql(`
+  mutation RefereeRequestTb($input: RefereeRequestTbInput!) {
+    refereeRequestTb(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RefereeRespondTbRequestDocument = graphql(`
+  mutation RefereeRespondTbRequest($input: RefereeRespondTbRequestInput!) {
+    refereeRespondTbRequest(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const ConfirmBeatmapResultDocument = graphql(`
+  mutation ConfirmBeatmapResult($input: ConfirmBeatmapResultInput!) {
+    confirmBeatmapResult(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const ConfirmTbResultDocument = graphql(`
+  mutation ConfirmTbResult($input: ConfirmTbResultInput!) {
+    confirmTbResult(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const GrantAdditionalTimeDocument = graphql(`
+  mutation GrantAdditionalTime($input: ReasonCommandInput!) {
+    grantAdditionalTime(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const CalibrateTimerDocument = graphql(`
+  mutation CalibrateTimer($input: CalibrateTimerInput!) {
+    calibrateTimer(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const PauseTimerDocument = graphql(`
+  mutation PauseTimer($input: ReasonCommandInput!) {
+    pauseTimer(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const ResumeTimerDocument = graphql(`
+  mutation ResumeTimer($input: ReasonCommandInput!) {
+    resumeTimer(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const SuspendMatchDocument = graphql(`
+  mutation SuspendMatch($input: ReasonCommandInput!) {
+    suspendMatch(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const ResumeMatchDocument = graphql(`
+  mutation ResumeMatch($input: ReasonCommandInput!) {
+    resumeMatch(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const SkipCurrentActionDocument = graphql(`
+  mutation SkipCurrentAction($input: ReasonCommandInput!) {
+    skipCurrentAction(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const AbortMatchDocument = graphql(`
+  mutation AbortMatch($input: ReasonCommandInput!) {
+    abortMatch(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const StartTbDocument = graphql(`
+  mutation StartTb($input: ReasonCommandInput!) {
+    startTb(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RecordSurrenderDocument = graphql(`
+  mutation RecordSurrender($input: RecordSurrenderInput!) {
+    recordSurrender(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const ConfirmIRCResultDocument = graphql(`
+  mutation ConfirmIRCResult($input: ConfirmIRCResultInput!) {
+    confirmIRCResult(input: $input) {
+      success
+      commandId
+      disposition
+      previousVersion
+      resultingVersion
+      currentVersion
+      error {
+        code
+        message
+        currentVersion
+      }
+    }
+  }
+`);
+
+export const RejectIRCObservationDocument = graphql(`
+  mutation RejectIRCObservation($matchId: ID!, $observationId: ID!, $reason: String!) {
+    rejectIRCObservation(matchId: $matchId, observationId: $observationId, reason: $reason)
+  }
+`);
+
+export const RetryMatchAutomationDocument = graphql(`
+  mutation RetryMatchAutomation($input: RetryMatchAutomationInput!) {
+    retryMatchAutomation(input: $input)
+  }
+`);
+
+export const RetryIRCJobDocument = graphql(`
+  mutation RetryIRCJob($input: RetryIRCJobInput!) {
+    retryIRCJob(input: $input)
+  }
+`);
+
+// ---------------------------------------------------------------------------
+// Queries — IRC (referee console)
+// ---------------------------------------------------------------------------
+
+export const IrcConnectionStatusDocument = graphql(`
+  query IrcConnectionStatus($matchId: ID!) {
+    ircConnectionStatus(matchId: $matchId) {
+      configured
+      connected
+      degraded
+      lastError
+    }
+  }
+`);
+
+export const IrcObservationsDocument = graphql(`
+  query IrcObservations($matchId: ID!, $channel: String!) {
+    ircObservations(matchId: $matchId, channel: $channel) {
+      id
+      channel
+      sender
+      command
+      raw
+      observedAt
+      reviewStatus
+      reviewReason
+      suggestedResult {
+        winningTeam
+        boardPieceID
+      }
+    }
+  }
+`);
+
+export const IrcJobsDocument = graphql(`
+  query IrcJobs($matchId: ID!) {
+    ircJobs(matchId: $matchId) {
+      id
+      channel
+      kind
+      payload
+      status
+      attempts
+      automaticRetry
+      nextTryAt
+      sentAt
+      ackDeadline
+      acknowledgedAt
+      lastError
     }
   }
 `);

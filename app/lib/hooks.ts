@@ -28,6 +28,9 @@ import {
   AnnouncementsDocument,
   RoomsDocument,
   MatchByCodeDocument,
+  IrcConnectionStatusDocument,
+  IrcObservationsDocument,
+  IrcJobsDocument,
 } from "@/app/lib/operations";
 import { toast } from "@heroui/react";
 import type {
@@ -626,7 +629,7 @@ export type MatchByCodeResult = {
   code: string;
   name: string;
   roomType: string;
-  room: { name: string; round: string } | null;
+  room: { name: string; round: string; settings: { mpLink: string | null } } | null;
   pool: Array<{
     poolSlotID: string;
     metadataStatus: string;
@@ -653,6 +656,85 @@ export type MatchByCodeResult = {
   strategistView: MatchActorView | null;
   /** Non-null when the current user is a team leader of this room. */
   captainView: MatchActorView | null;
+  /** Non-null when the current user is the assigned referee (or admin). */
+  refereeView: MatchRefereeView | null;
+};
+
+export type MatchAuditActor = {
+  osuID: string;
+  capability: "STRATEGIST" | "CAPTAIN" | "REFEREE";
+  team: "RED" | "BLUE" | null;
+  adminOverride: boolean;
+  refereeOverride: boolean;
+};
+
+export type MatchAuditEntry = {
+  actionId: string;
+  sequence: string;
+  actor: MatchAuditActor;
+  commandType: string;
+  previousVersion: string;
+  resultingVersion: string;
+  timestamp: string;
+  reason: string | null;
+};
+
+export type MatchAutomationIssue = {
+  eventID: string;
+  sequence: string;
+  eventType: string;
+  attempts: number;
+  lastError: string;
+  occurredAt: string;
+};
+
+export type MatchRefereeView = {
+  matchID: string;
+  analysis: MatchActorAnalysis;
+  suspensionReason: string | null;
+  abortReason: string | null;
+  auditLog: MatchAuditEntry[];
+  automationIssues: MatchAutomationIssue[];
+};
+
+export type MatchIrcConnectionStatus = {
+  configured: boolean;
+  connected: boolean;
+  degraded: boolean;
+  lastError: string | null;
+};
+
+export type MatchIrcObservation = {
+  id: string;
+  channel: string;
+  sender: string;
+  command: string;
+  raw: string;
+  observedAt: string;
+  reviewStatus: "PENDING" | "CONFIRMING" | "CONFIRMED" | "REJECTED";
+  reviewReason: string | null;
+  suggestedResult: { winningTeam: "RED" | "BLUE"; boardPieceID: string } | null;
+};
+
+export type MatchIrcJob = {
+  id: string;
+  channel: string;
+  kind: string;
+  payload: string;
+  status:
+    | "PENDING"
+    | "SENDING"
+    | "SENT"
+    | "ACKNOWLEDGED"
+    | "FAILED"
+    | "CANCELLED";
+  attempts: number;
+  automaticRetry: boolean;
+  nextTryAt: string | null;
+  sentAt: string | null;
+  ackDeadline: string | null;
+  acknowledgedAt: string | null;
+  lastError: string | null;
 };
 
 export type MatchAction =
@@ -720,6 +802,65 @@ export function useMatchByCode(code: string, enabled = true) {
       return res.data?.matchByCode ?? null;
     },
     enabled: enabled && Boolean(code),
+    retry: 1,
+  });
+}
+
+/**
+ * IRC connection status for the referee console (M3). Polled — the IRC
+ * gateway state changes from the outside (bot connect/disconnect).
+ */
+export function useIrcConnectionStatus(matchId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["match", matchId, "irc", "status"],
+    queryFn: async () => {
+      const res = await graphqlRequest(IrcConnectionStatusDocument, { matchId });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.ircConnectionStatus ?? null;
+    },
+    enabled: enabled && Boolean(matchId),
+    refetchInterval: 15_000,
+    retry: 1,
+  });
+}
+
+/**
+ * IRC result observations (M3). Pending observations need a timely surface,
+ * so the poll is faster. `channel` is derived from the room MP link; without
+ * it the query is disabled (the backend requires a channel argument).
+ */
+export function useIrcObservations(
+  matchId: string,
+  channel: string | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["match", matchId, "irc", "observations", channel],
+    queryFn: async () => {
+      const res = await graphqlRequest(IrcObservationsDocument, {
+        matchId,
+        channel: channel ?? "",
+      });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.ircObservations ?? [];
+    },
+    enabled: enabled && Boolean(matchId) && Boolean(channel),
+    refetchInterval: 10_000,
+    retry: 1,
+  });
+}
+
+/** IRC send jobs for the referee console (M3); polled for failed-job retries. */
+export function useIrcJobs(matchId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["match", matchId, "irc", "jobs"],
+    queryFn: async () => {
+      const res = await graphqlRequest(IrcJobsDocument, { matchId });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.ircJobs ?? [];
+    },
+    enabled: enabled && Boolean(matchId),
+    refetchInterval: 15_000,
     retry: 1,
   });
 }
