@@ -377,7 +377,6 @@ function buildBeatmapPayload(body: Record<string, unknown>): Record<string, unkn
   if (body.version !== undefined) payload.version = body.version;
   if (body.status !== undefined) payload.status = body.status;
   if (body.difficultyRating !== undefined) payload.difficulty_rating = body.difficultyRating;
-  if (body.modString !== undefined) payload.mod_string = body.modString;
   if (body.onlineID !== undefined) payload.id = Number(body.onlineID);
   return payload;
 }
@@ -768,7 +767,6 @@ export function useRooms(
     ["rooms", filters, page, perPage],
     () =>
       graphqlRequest(RoomsDocument, {
-        type: filters.type ?? null,
         search: filters.search || null,
         round: filters.round || null,
         status: filters.status ?? null,
@@ -859,24 +857,11 @@ export function useSetRoomReferee() {
 }
 
 /** Red/blue strategist assignment (PATCH /rooms/:id/strategists). */
-export function useSetRoomStrategists() {
+export function useSetRoomTeams() {
   const qc = useQueryClient();
   return useToastedMutation({
-    mutationFn: ({
-      id,
-      redStrategistUserId,
-      blueStrategistUserId,
-    }: {
-      id: string;
-      redStrategistUserId: number | null;
-      blueStrategistUserId: number | null;
-    }) =>
-      rooms
-        .setStrategists(id, {
-          red_strategist_user_id: redStrategistUserId,
-          blue_strategist_user_id: blueStrategistUserId,
-        })
-        .then(throwOnRestError),
+    mutationFn: ({ id, redTeamId, blueTeamId }: { id: string; redTeamId: string | null; blueTeamId: string | null }) =>
+      rooms.setTeams(id, { red_team_id: redTeamId, blue_team_id: blueTeamId }).then(throwOnRestError),
     onSuccess: () => invalidateRoomQueries(qc),
   });
 }
@@ -910,34 +895,6 @@ export function useSetRoomBpOrder() {
 }
 
 /** Team rosters + leaders (PATCH /rooms/:id/players). */
-export function useSetRoomPlayers() {
-  const qc = useQueryClient();
-  return useToastedMutation({
-    mutationFn: ({
-      id,
-      redLeader,
-      blueLeader,
-      redPlayers,
-      bluePlayers,
-    }: {
-      id: string;
-      redLeader: number | null;
-      blueLeader: number | null;
-      redPlayers: number[];
-      bluePlayers: number[];
-    }) =>
-      rooms
-        .setPlayers(id, {
-          red_leader: redLeader,
-          blue_leader: blueLeader,
-          red_players: redPlayers,
-          blue_players: bluePlayers,
-        })
-        .then(throwOnRestError),
-    onSuccess: () => invalidateRoomQueries(qc),
-  });
-}
-
 /** MP link update — admin or the designated referee of a match room. */
 export function useSetRoomMPLink() {
   const qc = useQueryClient();
@@ -962,8 +919,8 @@ export function useSetRoomStreamLink() {
 export function useSetRoomMappool() {
   const qc = useQueryClient();
   return useToastedMutation({
-    mutationFn: ({ id, pool }: { id: string; pool: Record<string, unknown> }) =>
-      rooms.setMappool(id, pool).then(throwOnRestError),
+    mutationFn: ({ id, mappoolId }: { id: string; mappoolId: string | null }) =>
+      rooms.setMappool(id, mappoolId).then(throwOnRestError),
     onSuccess: () => invalidateRoomQueries(qc),
   });
 }

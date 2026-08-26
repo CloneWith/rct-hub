@@ -23,7 +23,6 @@ import { Button, Chip } from "@heroui/react";
 import { useMe, useRoomByCode, useStartRoomMatch } from "@/app/lib/hooks";
 import { canControlRoom, isAdmin, roomStatusChip, validateRoomForStart } from "@/app/lib/rooms";
 import MembersSection from "./components/MembersSection";
-import MappoolEditor from "./components/MappoolEditor";
 
 const TONE_COLOR: Record<string, "default" | "accent" | "success" | "warning" | "danger"> = {
   neutral: "default",
@@ -137,8 +136,7 @@ function RoomStage({ code }: { code: string }) {
       {/* ---- Members & roles ---- */}
       <MembersSection room={room} canEdit={canEditConfig} />
 
-      {/* ---- Mappool editor ---- */}
-      <MappoolEditor room={room} canEdit={canEditConfig} />
+       {/* 图池由管理后台维护，房间页只选择已存在的图池实体。 */}
 
       {/* ---- Start card ---- */}
       {canStart && (

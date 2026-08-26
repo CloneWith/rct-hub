@@ -187,13 +187,6 @@ export type PieceMod =
   | 'SHIRO'
   | 'TB';
 
-export type PieceState =
-  | 'BANNED'
-  | 'DEAD'
-  | 'NORMAL'
-  | 'PICKED'
-  | 'WON';
-
 export type PlacePieceInput = {
   meta: CommandMeta;
   poolSlotId: string;
@@ -329,7 +322,6 @@ export type UsersQueryVariables = Exact<{
 export type UsersQuery = { users: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, onlineID: string, username: string, countryCode: string, roles: Array<UserRole>, verifyStatus: VerifyStatus, isBanned: boolean, globalRank: number | null, pp: number | null, avatarUrl: string }> } };
 
 export type RoomsQueryVariables = Exact<{
-  type?: RoomType | null | undefined;
   search?: string | null | undefined;
   round?: string | null | undefined;
   status?: MatchLifecycle | null | undefined;
@@ -339,14 +331,14 @@ export type RoomsQueryVariables = Exact<{
 }>;
 
 
-export type RoomsQuery = { rooms: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, code: string, name: string, type: RoomType, round: string, scheduledAt: string | null, createdAt: string, ownerID: string, refereeUserID: string | null, matchID: string | null, owner: { id: string, onlineID: string, username: string, avatarUrl: string } | null, match: { snapshot: { lifecycle: MatchLifecycle } } | null, settings: { redStrategistUserID: string | null, blueStrategistUserID: string | null, streamerUserID: string | null, firstPick: TeamSide | null, firstBan: TeamSide | null, redLeader: string | null, blueLeader: string | null, redPlayers: Array<string>, bluePlayers: Array<string>, mpLink: string | null, streamLink: string | null } }> } };
+export type RoomsQuery = { rooms: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, code: string, name: string, type: RoomType, round: string, scheduledAt: string | null, createdAt: string, ownerID: string, refereeUserID: string | null, matchID: string | null, owner: { id: string, onlineID: string, username: string, avatarUrl: string } | null, match: { snapshot: { lifecycle: MatchLifecycle } } | null, settings: { streamerUserID: string | null, firstPick: TeamSide | null, firstBan: TeamSide | null, redTeamID: string | null, blueTeamID: string | null, mappoolID: string | null, mpLink: string | null, streamLink: string | null, redTeam: { id: string, name: string, description: string | null, seed: string | null, leaderID: number | null, strategistID: number | null, playerIDs: Array<number>, isReady: boolean } | null, blueTeam: { id: string, name: string, description: string | null, seed: string | null, leaderID: number | null, strategistID: number | null, playerIDs: Array<number>, isReady: boolean } | null, mappool: { id: string, name: string, description: string | null, entries: Array<{ mod: PieceMod, index: number, beatmapID: number | null, skill: string | null, selectorID: number | null }> } | null } }> } };
 
 export type RoomByCodeQueryVariables = Exact<{
   code: string;
 }>;
 
 
-export type RoomByCodeQuery = { roomByCode: { id: string, code: string, name: string, type: RoomType, round: string, scheduledAt: string | null, createdAt: string, ownerID: string, refereeUserID: string | null, matchID: string | null, owner: { id: string, onlineID: string, username: string, avatarUrl: string } | null, referee: { id: string, onlineID: string, username: string, avatarUrl: string } | null, match: { snapshot: { lifecycle: MatchLifecycle } } | null, settings: { redStrategistUserID: string | null, blueStrategistUserID: string | null, streamerUserID: string | null, firstPick: TeamSide | null, firstBan: TeamSide | null, redPlayers: Array<string>, bluePlayers: Array<string>, redLeader: string | null, blueLeader: string | null, mpLink: string | null, streamLink: string | null, redStrategist: { id: string, onlineID: string, username: string, avatarUrl: string } | null, blueStrategist: { id: string, onlineID: string, username: string, avatarUrl: string } | null, streamer: { id: string, onlineID: string, username: string, avatarUrl: string } | null, mappool: { slots: Array<{ mod: PieceMod, pieces: Array<{ mod: PieceMod, index: number, beatmapID: string | null, state: PieceState }> }> } } } | null };
+export type RoomByCodeQuery = { roomByCode: { id: string, code: string, name: string, type: RoomType, round: string, scheduledAt: string | null, createdAt: string, ownerID: string, refereeUserID: string | null, matchID: string | null, owner: { id: string, onlineID: string, username: string, avatarUrl: string } | null, referee: { id: string, onlineID: string, username: string, avatarUrl: string } | null, match: { snapshot: { lifecycle: MatchLifecycle } } | null, settings: { streamerUserID: string | null, firstPick: TeamSide | null, firstBan: TeamSide | null, redTeamID: string | null, blueTeamID: string | null, mappoolID: string | null, mpLink: string | null, streamLink: string | null, streamer: { id: string, onlineID: string, username: string, avatarUrl: string } | null, redTeam: { id: string, name: string, description: string | null, seed: string | null, leaderID: number | null, strategistID: number | null, playerIDs: Array<number>, isReady: boolean, leader: { id: string, onlineID: string, username: string, avatarUrl: string } | null, strategist: { id: string, onlineID: string, username: string, avatarUrl: string } | null, players: Array<{ id: string, onlineID: string, username: string, avatarUrl: string }> } | null, blueTeam: { id: string, name: string, description: string | null, seed: string | null, leaderID: number | null, strategistID: number | null, playerIDs: Array<number>, isReady: boolean, leader: { id: string, onlineID: string, username: string, avatarUrl: string } | null, strategist: { id: string, onlineID: string, username: string, avatarUrl: string } | null, players: Array<{ id: string, onlineID: string, username: string, avatarUrl: string }> } | null, mappool: { id: string, name: string, description: string | null, entries: Array<{ mod: PieceMod, index: number, beatmapID: number | null, skill: string | null, selectorID: number | null }> } | null } } | null };
 
 export type MatchByCodeQueryVariables = Exact<{
   code: string;
@@ -596,14 +588,14 @@ export type BeatmapsQueryVariables = Exact<{
 }>;
 
 
-export type BeatmapsQuery = { beatmaps: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, onlineID: string, title: string, artist: string, bpm: number, status: string, modString: string, modIndex: number, version: string, difficultyRating: number, coverUrl: string }> } };
+export type BeatmapsQuery = { beatmaps: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, onlineID: string, title: string, artist: string, bpm: number, status: string, version: string, difficultyRating: number, coverUrl: string }> } };
 
 export type BeatmapByOsuIdQueryVariables = Exact<{
   osuId: number;
 }>;
 
 
-export type BeatmapByOsuIdQuery = { beatmapByOsuId: { id: string, onlineID: string, title: string, artist: string, bpm: number, status: string, modString: string, modIndex: number, version: string, difficultyRating: number, coverUrl: string } | null };
+export type BeatmapByOsuIdQuery = { beatmapByOsuId: { id: string, onlineID: string, title: string, artist: string, bpm: number, status: string, version: string, difficultyRating: number, coverUrl: string } | null };
 
 export type TeamsQueryVariables = Exact<{
   page?: number | null | undefined;
@@ -688,9 +680,8 @@ export const UsersDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<UsersQuery, UsersQueryVariables>;
 export const RoomsDocument = new TypedDocumentString(`
-    query Rooms($type: RoomType, $search: String, $round: String, $status: MatchLifecycle, $relatedToMe: Boolean, $page: Int, $perPage: Int) {
+    query Rooms($search: String, $round: String, $status: MatchLifecycle, $relatedToMe: Boolean, $page: Int, $perPage: Int) {
   rooms(
-    type: $type
     search: $search
     round: $round
     status: $status
@@ -721,15 +712,44 @@ export const RoomsDocument = new TypedDocumentString(`
         }
       }
       settings {
-        redStrategistUserID
-        blueStrategistUserID
         streamerUserID
         firstPick
         firstBan
-        redLeader
-        blueLeader
-        redPlayers
-        bluePlayers
+        redTeamID
+        blueTeamID
+        mappoolID
+        redTeam {
+          id
+          name
+          description
+          seed
+          leaderID
+          strategistID
+          playerIDs
+          isReady
+        }
+        blueTeam {
+          id
+          name
+          description
+          seed
+          leaderID
+          strategistID
+          playerIDs
+          isReady
+        }
+        mappool {
+          id
+          name
+          description
+          entries {
+            mod
+            index
+            beatmapID
+            skill
+            selectorID
+          }
+        }
         mpLink
         streamLink
       }
@@ -772,20 +792,6 @@ export const RoomByCodeDocument = new TypedDocumentString(`
       }
     }
     settings {
-      redStrategistUserID
-      redStrategist {
-        id
-        onlineID
-        username
-        avatarUrl: avatarURL
-      }
-      blueStrategistUserID
-      blueStrategist {
-        id
-        onlineID
-        username
-        avatarUrl: avatarURL
-      }
       streamerUserID
       streamer {
         id
@@ -795,21 +801,77 @@ export const RoomByCodeDocument = new TypedDocumentString(`
       }
       firstPick
       firstBan
-      redPlayers
-      bluePlayers
-      redLeader
-      blueLeader
+      redTeamID
+      blueTeamID
+      mappoolID
+      redTeam {
+        id
+        name
+        description
+        seed
+        leaderID
+        strategistID
+        playerIDs
+        isReady
+        leader {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        strategist {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        players {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+      }
+      blueTeam {
+        id
+        name
+        description
+        seed
+        leaderID
+        strategistID
+        playerIDs
+        isReady
+        leader {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        strategist {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+        players {
+          id
+          onlineID
+          username
+          avatarUrl: avatarURL
+        }
+      }
       mpLink
       streamLink
       mappool {
-        slots {
+        id
+        name
+        description
+        entries {
           mod
-          pieces {
-            mod
-            index
-            beatmapID
-            state
-          }
+          index
+          beatmapID
+          skill
+          selectorID
         }
       }
     }
@@ -1495,8 +1557,6 @@ export const BeatmapsDocument = new TypedDocumentString(`
       difficultyRating: starRating
       bpm
       status
-      modString
-      modIndex
       coverUrl: coverURL
     }
     page
@@ -1517,8 +1577,6 @@ export const BeatmapByOsuIdDocument = new TypedDocumentString(`
     difficultyRating: starRating
     bpm
     status
-    modString
-    modIndex
     coverUrl: coverURL
   }
 }

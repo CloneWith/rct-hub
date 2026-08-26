@@ -25,18 +25,36 @@ export type RoomItem = {
   owner: { id: string; onlineID: string; username: string; avatarUrl: string } | null;
   match: { snapshot: { lifecycle: MatchLifecycle } } | null;
   settings: {
-    redStrategistUserID: string | null;
-    blueStrategistUserID: string | null;
     streamerUserID: string | null;
     firstPick: TeamSide | null;
     firstBan: TeamSide | null;
-    redLeader: string | null;
-    blueLeader: string | null;
-    redPlayers: string[];
-    bluePlayers: string[];
+    redTeamID: string | null;
+    blueTeamID: string | null;
+    mappoolID: string | null;
+    redTeam: TeamSummary | null;
+    blueTeam: TeamSummary | null;
+    mappool: MappoolSummary | null;
     mpLink: string | null;
     streamLink: string | null;
   };
+};
+
+export type TeamSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  seed: string | null;
+  leaderID: number | null;
+  strategistID: number | null;
+  playerIDs: number[];
+  isReady: boolean;
+};
+
+export type MappoolSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  entries: { mod: PieceMod; index: number; beatmapID: number | null; skill: string | null; selectorID: number | null }[];
 };
 
 /** Canonical round values shared by the create/edit dialog and the filter. */
@@ -178,42 +196,46 @@ export function validateRoomForStart(room: RoomSetup): StartValidationResult {
 
   if (room.type === "PRIVATE") return { ok: true, issues };
 
-  require("settings.red_strategist_user_id", "红方策略师", s.redStrategistUserID != null);
-  require("settings.blue_strategist_user_id", "蓝方策略师", s.blueStrategistUserID != null);
+  require("settings.red_team_id", "红方队伍", s.redTeam?.isReady === true);
+  require("settings.blue_team_id", "蓝方队伍", s.blueTeam?.isReady === true);
   require("settings.first_pick", "先选方（first pick）", s.firstPick === "RED" || s.firstPick === "BLUE");
   require("settings.first_ban", "先禁方（first ban）", s.firstBan === "RED" || s.firstBan === "BLUE");
 
   if (room.type === "MATCH") {
-    require("settings.red_leader", "红方队长", s.redLeader != null);
-    require("settings.blue_leader", "蓝方队长", s.blueLeader != null);
-    require("settings.red_players", "红方选手（正式赛需恰好 8 人）", s.redPlayers.length === 8);
-    require("settings.blue_players", "蓝方选手（正式赛需恰好 8 人）", s.bluePlayers.length === 8);
+    const redPlayers = s.redTeam?.playerIDs ?? [];
+    const bluePlayers = s.blueTeam?.playerIDs ?? [];
+    const redLeader = s.redTeam?.leaderID ?? null;
+    const blueLeader = s.blueTeam?.leaderID ?? null;
+    require("settings.red_team_id", "红方选手（正式赛需恰好 8 人）", redPlayers.length === 8);
+    require("settings.blue_team_id", "蓝方选手（正式赛需恰好 8 人）", bluePlayers.length === 8);
     require("settings.mp_link", "MP 链接", !!s.mpLink && s.mpLink.trim() !== "");
 
     // Rosters must be unique across teams and leaders must belong to their team.
-    const allPlayers = [...s.redPlayers, ...s.bluePlayers];
+    const allPlayers = [...redPlayers, ...bluePlayers];
     if (new Set(allPlayers).size !== allPlayers.length) {
       issues.push({ field: "settings.players", label: "双方选手存在重复的 osu! ID" });
     }
-    if (s.redLeader != null && !s.redPlayers.includes(s.redLeader)) {
+    if (redLeader != null && !redPlayers.includes(redLeader)) {
       issues.push({ field: "settings.red_leader", label: "红方队长不在红方阵容中" });
     }
-    if (s.blueLeader != null && !s.bluePlayers.includes(s.blueLeader)) {
+    if (blueLeader != null && !bluePlayers.includes(blueLeader)) {
       issues.push({ field: "settings.blue_leader", label: "蓝方队长不在蓝方阵容中" });
     }
 
     // Pool: exactly one Shiro + one TB among active (non-removed) slots.
     const modCounts = new Map<PieceMod, number>();
-    let abnormalPiece = false;
-    for (const group of s.mappool.slots) {
-      const active = group.pieces.filter((p) => p.beatmapID !== "-1");
-      modCounts.set(group.mod, (modCounts.get(group.mod) ?? 0) + active.length);
-      if (active.some((p) => p.state !== "NORMAL")) abnormalPiece = true;
+    const abnormalPiece = false;
+    for (const entry of s.mappool?.entries ?? []) {
+      if (entry.beatmapID == null) {
+        modCounts.set(entry.mod, (modCounts.get(entry.mod) ?? 0) + 1);
+      } else {
+        modCounts.set(entry.mod, (modCounts.get(entry.mod) ?? 0) + 1);
+      }
     }
-    if ((modCounts.get("SHIRO") ?? 0) !== 1) {
+    if (!s.mappool || (modCounts.get("SHIRO") ?? 0) !== 1) {
       issues.push({ field: "settings.mappool", label: "图池需恰好 1 个 Shiro 槽位" });
     }
-    if ((modCounts.get("TB") ?? 0) !== 1) {
+    if (!s.mappool || (modCounts.get("TB") ?? 0) !== 1) {
       issues.push({ field: "settings.mappool", label: "图池需恰好 1 个 TB 槽位" });
     }
     if (abnormalPiece) {

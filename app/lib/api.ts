@@ -137,17 +137,14 @@ export const rooms = {
   create: (body: Record<string, unknown>) =>
     restFetch("/rooms", { method: "POST", body: JSON.stringify(body) }),
 
-  setStrategists: (id: string, body: Record<string, unknown>) =>
-    restFetch(`/rooms/${id}/strategists`, { method: "PATCH", body: JSON.stringify(body) }),
+  setTeams: (id: string, body: Record<string, unknown>) =>
+    restFetch(`/rooms/${id}/teams`, { method: "PATCH", body: JSON.stringify(body) }),
 
   setStreamer: (id: string, body: Record<string, unknown>) =>
     restFetch(`/rooms/${id}/streamer`, { method: "PATCH", body: JSON.stringify(body) }),
 
   setBpOrder: (id: string, body: Record<string, unknown>) =>
     restFetch(`/rooms/${id}/bp-order`, { method: "PATCH", body: JSON.stringify(body) }),
-
-  setPlayers: (id: string, body: Record<string, unknown>) =>
-    restFetch(`/rooms/${id}/players`, { method: "PATCH", body: JSON.stringify(body) }),
 
   setMpLink: (id: string, body: Record<string, unknown>) =>
     restFetch(`/rooms/${id}/mp-link`, { method: "PATCH", body: JSON.stringify(body) }),
@@ -156,15 +153,12 @@ export const rooms = {
     restFetch(`/rooms/${id}/stream-link`, { method: "PATCH", body: JSON.stringify(body) }),
 
   /**
-   * Replace the room's pre-game pool configuration (PATCH /rooms/:id/mappool).
-   * `pool` is a full `domain.Mappool` — `{ slots: { NM: [Piece...], HD: [...] } }`.
-   * The backend replaces the whole pool on every call, so callers must always
-   * send the complete slot list for every mod group.
+   * Link a managed mappool entity to the room.
    */
-  setMappool: (id: string, pool: Record<string, unknown>) =>
+  setMappool: (id: string, mappoolId: string | null) =>
     restFetch(`/rooms/${id}/mappool`, {
       method: "PATCH",
-      body: JSON.stringify({ mappool: pool }),
+      body: JSON.stringify({ mappool_id: mappoolId }),
     }),
 
   startMatch: (id: string) =>
@@ -203,14 +197,6 @@ export interface RoomMetadataInput {
   refereeUserId?: number;
   /** osu! online id */
   streamerUserId?: number;
-  /** osu! online id */
-  redLeader?: number;
-  /** osu! online id */
-  blueLeader?: number;
-  /** osu! online ids */
-  redPlayers?: number[];
-  /** osu! online ids */
-  bluePlayers?: number[];
 }
 
 function buildRoomMetadataPayload(body: RoomMetadataInput): Record<string, unknown> {
@@ -220,10 +206,6 @@ function buildRoomMetadataPayload(body: RoomMetadataInput): Record<string, unkno
   if (body.scheduledAt !== undefined) payload.scheduled_at = body.scheduledAt;
   if (body.refereeUserId !== undefined) payload.referee_user_id = body.refereeUserId;
   if (body.streamerUserId !== undefined) payload.streamer_user_id = body.streamerUserId;
-  if (body.redLeader !== undefined) payload.red_leader = body.redLeader;
-  if (body.blueLeader !== undefined) payload.blue_leader = body.blueLeader;
-  if (body.redPlayers !== undefined) payload.red_players = body.redPlayers;
-  if (body.bluePlayers !== undefined) payload.blue_players = body.bluePlayers;
   return payload;
 }
 

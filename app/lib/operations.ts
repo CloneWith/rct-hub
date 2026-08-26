@@ -65,7 +65,6 @@ export const UsersDocument = graphql(`
 
 export const RoomsDocument = graphql(`
   query Rooms(
-    $type: RoomType
     $search: String
     $round: String
     $status: MatchLifecycle
@@ -74,7 +73,6 @@ export const RoomsDocument = graphql(`
     $perPage: Int
   ) {
     rooms(
-      type: $type
       search: $search
       round: $round
       status: $status
@@ -105,15 +103,38 @@ export const RoomsDocument = graphql(`
           }
         }
         settings {
-          redStrategistUserID
-          blueStrategistUserID
           streamerUserID
           firstPick
           firstBan
-          redLeader
-          blueLeader
-          redPlayers
-          bluePlayers
+          redTeamID
+          blueTeamID
+          mappoolID
+          redTeam {
+            id
+            name
+            description
+            seed
+            leaderID
+            strategistID
+            playerIDs
+            isReady
+          }
+          blueTeam {
+            id
+            name
+            description
+            seed
+            leaderID
+            strategistID
+            playerIDs
+            isReady
+          }
+          mappool {
+            id
+            name
+            description
+            entries { mod index beatmapID skill selectorID }
+          }
           mpLink
           streamLink
         }
@@ -165,20 +186,6 @@ export const RoomByCodeDocument = graphql(`
         }
       }
       settings {
-        redStrategistUserID
-        redStrategist {
-          id
-          onlineID
-          username
-          avatarUrl: avatarURL
-        }
-        blueStrategistUserID
-        blueStrategist {
-          id
-          onlineID
-          username
-          avatarUrl: avatarURL
-        }
         streamerUserID
         streamer {
           id
@@ -188,22 +195,42 @@ export const RoomByCodeDocument = graphql(`
         }
         firstPick
         firstBan
-        redPlayers
-        bluePlayers
-        redLeader
-        blueLeader
+        redTeamID
+        blueTeamID
+        mappoolID
+        redTeam {
+          id
+          name
+          description
+          seed
+          leaderID
+          strategistID
+          playerIDs
+          isReady
+          leader { id onlineID username avatarUrl: avatarURL }
+          strategist { id onlineID username avatarUrl: avatarURL }
+          players { id onlineID username avatarUrl: avatarURL }
+        }
+        blueTeam {
+          id
+          name
+          description
+          seed
+          leaderID
+          strategistID
+          playerIDs
+          isReady
+          leader { id onlineID username avatarUrl: avatarURL }
+          strategist { id onlineID username avatarUrl: avatarURL }
+          players { id onlineID username avatarUrl: avatarURL }
+        }
         mpLink
         streamLink
         mappool {
-          slots {
-            mod
-            pieces {
-              mod
-              index
-              beatmapID
-              state
-            }
-          }
+          id
+          name
+          description
+          entries { mod index beatmapID skill selectorID }
         }
       }
     }
@@ -960,8 +987,6 @@ export const BeatmapsDocument = graphql(`
         difficultyRating: starRating
         bpm
         status
-        modString
-        modIndex
         coverUrl: coverURL
       }
       page
@@ -988,8 +1013,6 @@ export const BeatmapByOsuIdDocument = graphql(`
       difficultyRating: starRating
       bpm
       status
-      modString
-      modIndex
       coverUrl: coverURL
     }
   }

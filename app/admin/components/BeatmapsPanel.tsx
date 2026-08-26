@@ -27,7 +27,6 @@ import PaginationBar from "./PaginationBar";
 import EmptyTableState from "./EmptyTableState";
 import SearchBar from "./SearchBar";
 
-const MOD_OPTIONS = ["NM", "HD", "HR", "DT", "FM", "TB"];
 const STATUS_OPTIONS = ["ranked", "loved", "qualified", "graveyard"];
 const PER_PAGE = 10;
 const SEARCH_PER_PAGE = 200;
@@ -39,7 +38,6 @@ const blankBm = {
   version: "",
   difficultyRating: 0,
   status: "ranked",
-  modString: "NM",
 };
 
 type BmForm = typeof blankBm;
@@ -100,7 +98,6 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
       version: b.version,
       difficultyRating: b.difficultyRating,
       status: b.status,
-      modString: b.modString,
     });
     setBmFetched(true);
     setBmModal(true);
@@ -121,9 +118,6 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
           version: b.version ?? "",
           difficultyRating: b.difficultyRating ?? 0,
           status: STATUS_OPTIONS.includes(b.status) ? b.status : p.status,
-          modString: MOD_OPTIONS.includes(b.modString)
-            ? b.modString
-            : p.modString || "NM",
         }));
         setBmEditId(b.id);
         setBmFetched(true);
@@ -204,7 +198,7 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
                       </Table.Cell>
                       <Table.Cell>
                         <Chip size="sm" variant="soft" color="accent">
-                          {b.modString}
+                          谱面
                         </Chip>
                       </Table.Cell>
                       <Table.Cell>
@@ -374,27 +368,6 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
                             }
                           />
                         </TextField>
-                        <Select
-                          variant="secondary"
-                          value={bmF.modString}
-                          onChange={(v) =>
-                            setBmF((p) => ({...p, modString: v as string}))
-                          }
-                        >
-                          <Label>图池分类</Label>
-                          <Select.Trigger>
-                            <Select.Value/>
-                          </Select.Trigger>
-                          <Select.Popover>
-                            <ListBox>
-                              {MOD_OPTIONS.map((m) => (
-                                <ListBox.Item key={m} id={m}>
-                                  {m}
-                                </ListBox.Item>
-                              ))}
-                            </ListBox>
-                          </Select.Popover>
-                        </Select>
                         <Select
                           variant="secondary"
                           value={bmF.status}

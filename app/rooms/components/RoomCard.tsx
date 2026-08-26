@@ -44,15 +44,15 @@ function formatTime(iso: string | null): string | null {
   });
 }
 
-function TeamSummary({ label, leader, players }: { label: string; leader: string | null; players: string[] }) {
+function TeamSummary({ label, team }: { label: string; team: RoomItem["settings"]["redTeam"] }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm">
-        {players.length > 0 ? (
+        {team ? (
           <>
-            {players.length} 名玩家
-            {leader && <span className="text-muted-foreground"> · 队长 #{leader}</span>}
+            {team.name} · {team.playerIDs.length} 名玩家
+            {team.leaderID && <span className="text-muted-foreground"> · 队长 #{team.leaderID}</span>}
           </>
         ) : (
           <span className="text-muted-foreground">待定</span>
@@ -164,13 +164,11 @@ export default function RoomCard({
       <div className="grid grid-cols-2 gap-2 rounded-lg bg-surface-secondary p-3">
         <TeamSummary
           label="红方"
-          leader={room.settings.redLeader}
-          players={room.settings.redPlayers}
+          team={room.settings.redTeam}
         />
         <TeamSummary
           label="蓝方"
-          leader={room.settings.blueLeader}
-          players={room.settings.bluePlayers}
+          team={room.settings.blueTeam}
         />
       </div>
 
