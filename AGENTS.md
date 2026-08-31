@@ -236,17 +236,16 @@ REST shape:
   "ar": 9,
   "accuracy": 8,
   "cover_url": "https://assets.ppy.sh/beatmaps/500000/covers/cover.jpg",
-  "mod_string": "NM",
-  "mod_index": 0,
-  "selector_id": 0,
-  "credit_user_ids": [],
-  "skill": "",
   "comment": "",
   "is_original": false,
   "created_at": "...",
   "updated_at": "..."
 }
 ```
+
+Notes:
+
+- Placement metadata (mod / index / selector / skill) lives on `MappoolEntry` inside `mappools`, not on the beatmap itself.
 
 ### Room
 
@@ -257,17 +256,15 @@ REST shape:
   "name": "Friendly Match",
   "type": "casual",
   "owner_id": 123456,
+  "scheduled_at": "2026-09-01T12:00:00Z",
+  "referee_user_id": 999,
   "settings": {
-    "red_strategist_user_id": 111,
-    "blue_strategist_user_id": 222,
+    "red_team_id": "...",
+    "blue_team_id": "...",
+    "mappool_id": "...",
     "streamer_user_id": 333,
-    "mappool": { ... },
     "first_pick": "red",
     "first_ban": "blue",
-    "red_players": [111, 112],
-    "blue_players": [222, 223],
-    "red_leader": 111,
-    "blue_leader": 222,
     "mp_link": "https://osu.ppy.sh/mp/...",
     "stream_link": "https://twitch.tv/..."
   },
@@ -279,7 +276,8 @@ REST shape:
 
 Room types: `private`, `casual`, `match`.
 
-- `casual` and `match` rooms require strategists, BP order, players, leaders, and MP link before starting.
+- Teams and the mappool are linked by `red_team_id` / `blue_team_id` / `mappool_id` (see `PATCH /rooms/:id/teams` and `PATCH /rooms/:id/mappool`).
+- `casual` and `match` rooms require both teams ready (leader + strategist), BP order, a scheduled time and an assigned referee before starting; match rooms additionally need a mappool and an MP link. The streamer is optional.
 - `private` rooms have no strict start requirements.
 
 ### Match
@@ -386,10 +384,11 @@ The REST surface is intentionally slim. Read operations and in-match commands ar
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/api/v1/rooms` | Yes | Create room |
-| PATCH | `/api/v1/rooms/:id/strategists` | Yes | Set red/blue strategist user IDs |
+| PATCH | `/api/v1/rooms/:id/teams` | Yes | Link red/blue team entities (both ready: leader + strategist) |
+| PATCH | `/api/v1/rooms/:id/mappool` | Yes | Link mappool entity (`{mappool_id}`) |
 | PATCH | `/api/v1/rooms/:id/streamer` | Yes | Set streamer |
 | PATCH | `/api/v1/rooms/:id/bp-order` | Yes | Set first pick / first ban |
-| PATCH | `/api/v1/rooms/:id/players` | Yes | Set rosters + leaders |
+| PATCH | `/api/v1/rooms/:id/referee` | Yes | Set assigned referee |
 | PATCH | `/api/v1/rooms/:id/mp-link` | Yes | Set multiplayer link |
 | PATCH | `/api/v1/rooms/:id/stream-link` | Yes | Set stream link |
 | POST | `/api/v1/rooms/:id/start-match` | Yes | Start match from room |
@@ -543,7 +542,7 @@ Planned WebSocket message types once implemented:
 3. **Use `code` for public lookups.** Rooms and matches have short human-readable codes for sharing (`roomByCode`, `matchByCode`).
 4. **Poll for live updates.** WebSocket is not implemented; poll `recentMove` or `match` on GraphQL.
 5. **Admin-only mutations require the `admin` role.** Attempting admin actions without it returns `403`.
-6. **Room setup order.** Create room → set strategists → set BP order → set players → set MP link → start match.
+6. **Room setup order.** Create room → (admin) create teams + mappool → link teams → link mappool → set BP order → set referee/scheduled time → set MP link → start match (pre-start checklist gates the button; scheduled time + referee are hard requirements, streamer is optional).
 7. **Treat IDs carefully.** The REST `User`/`Beatmap` response uses `"_id"` for the Mongo ID and `"id"` for the osu/beatmap online ID. In GraphQL, use `id` for the Mongo ID and `onlineID` for the online ID.
 
 ## Local Development
