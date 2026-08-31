@@ -280,12 +280,60 @@ export const MatchByCodeDocument = graphql(`
         version
         lifecycle
         phase
+        firstBan
+        firstPick
         turn
         activeTeam
+        poolSlots {
+          id
+          mod
+          state
+        }
+        board {
+          cells {
+            cell
+            row
+            col
+            zone
+            piece {
+              id
+              sourcePoolSlotID
+              mod
+              forceMod
+              selectedBy
+              owner
+              outcome
+            }
+          }
+        }
         wonCounts {
           red
           blue
         }
+        timer {
+          startedAt
+          durationMilliseconds
+          paused
+          remainingAtPauseMilliseconds
+        }
+        robberyUsed { red blue }
+        teamPauseUsed { red blue }
+        rosters {
+          red { leaderID playerIDs }
+          blue { leaderID playerIDs }
+        }
+        pendingPieceID
+        pendingTBRequest { id requestedBy basis }
+        tbEntry { basis requestID requestedBy }
+        winner
+        result {
+          winner
+          reason
+          surrenderingTeam
+          confirmingPlayerIDs
+          wonCounts { red blue }
+        }
+        stalemate { wonCounts { red blue } }
       }
       strategistView {
         isMyTurn

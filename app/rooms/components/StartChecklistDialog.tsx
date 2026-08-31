@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Modal, toast } from "@heroui/react";
 import { AlertTriangle, CheckCircle2, Wrench, XCircle } from "lucide-react";
-import { useStartRoomMatch } from "@/app/lib/hooks";
+import { useRoomByCode, useStartRoomMatch } from "@/app/lib/hooks";
 import { buildStartChecklist, type StartChecklistItem, type RoomItem } from "@/app/lib/rooms";
 
 const STATUS_ICON = {
@@ -57,10 +57,12 @@ export default function StartChecklistDialog({
 }) {
   const router = useRouter();
   const startMatch = useStartRoomMatch();
-  const checklist = useMemo(() => buildStartChecklist(room), [room]);
+  const { data: freshRoom } = useRoomByCode(room.code, isOpen);
+  const currentRoom = freshRoom ?? room;
+  const checklist = useMemo(() => buildStartChecklist(currentRoom), [currentRoom]);
 
   const confirmStart = () => {
-    startMatch.mutate(room.id, {
+    startMatch.mutate(currentRoom.id, {
       onSuccess: () => {
         toast.success("比赛已开始");
         onOpenChange(false);
@@ -75,7 +77,7 @@ export default function StartChecklistDialog({
         <Modal.Container>
           <Modal.Dialog className="max-w-lg">
             <Modal.Header>
-              <Modal.Heading>开赛前检查单 · {room.name}</Modal.Heading>
+              <Modal.Heading>开赛前检查单 · {currentRoom.name}</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
               <div className="flex flex-col gap-4">
@@ -109,7 +111,7 @@ export default function StartChecklistDialog({
                       variant="secondary"
                       onPress={() => {
                         onOpenChange(false);
-                        router.push(`/rooms/${room.code}`);
+                        router.push(`/rooms/${currentRoom.code}`);
                       }}
                     >
                       <Wrench className="size-3.5" />
