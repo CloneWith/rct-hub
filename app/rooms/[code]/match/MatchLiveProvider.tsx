@@ -54,15 +54,17 @@ function resolveApiBase(): string {
 
 export function MatchLiveProvider({
   matchId,
+  initialSnapshot,
   children,
 }: {
   matchId: string;
+  initialSnapshot?: WSSnapshot;
   children: ReactNode;
 }) {
   const isClient = useIsClient();
   const [state, setState] = useState<MatchLiveState>({
     status: "connecting",
-    snapshot: null,
+    snapshot: initialSnapshot ?? null,
     lastEvent: null,
     clockOffsetMs: 0,
   });

@@ -25,11 +25,96 @@ import { LIFECYCLE_LABELS } from "./lib/visuals";
 import { useStrategistInteractions } from "./lib/useStrategistInteractions";
 import { useRefereeInteractions } from "./lib/useRefereeInteractions";
 import { useMatchAnimations } from "./lib/useMatchAnimations";
-import type { MatchLifecycle, MatchPhase } from "./lib/ws-protocol";
+import type {
+  MatchLifecycle,
+  MatchPhase,
+  MatchResultReason,
+  TBBasis,
+  WSSnapshot,
+} from "./lib/ws-protocol";
 
-function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchByCode>["data"]> }) {
+type BootstrapMatch = NonNullable<ReturnType<typeof useMatchByCode>["data"]>;
+
+function toLiveSnapshot(source: BootstrapMatch["snapshot"]): WSSnapshot {
+  return {
+    version: Number(source.version),
+    lifecycle: source.lifecycle as WSSnapshot["lifecycle"],
+    phase: source.phase as WSSnapshot["phase"],
+    firstBan: source.firstBan as WSSnapshot["firstBan"],
+    firstPick: source.firstPick as WSSnapshot["firstPick"],
+    turn: source.turn,
+    activeTeam: source.activeTeam ?? undefined,
+    poolSlots: source.poolSlots.map((slot) => ({
+      id: slot.id,
+      mod: slot.mod as WSSnapshot["poolSlots"][number]["mod"],
+      state: slot.state as WSSnapshot["poolSlots"][number]["state"],
+    })),
+    board: {
+      cells: source.board.cells.map((cell) => ({
+        cell: cell.cell,
+        row: cell.row,
+        col: cell.col,
+        zone: cell.zone as WSSnapshot["board"]["cells"][number]["zone"],
+        piece: cell.piece
+          ? {
+              id: cell.piece.id,
+              sourcePoolSlotId: cell.piece.sourcePoolSlotID,
+              mod: cell.piece.mod as WSSnapshot["poolSlots"][number]["mod"],
+              forceMod: cell.piece.forceMod ?? undefined,
+              selectedBy: cell.piece.selectedBy as WSSnapshot["firstBan"],
+              owner: cell.piece.owner ?? undefined,
+              outcome: cell.piece.outcome as NonNullable<
+                WSSnapshot["board"]["cells"][number]["piece"]
+              >["outcome"],
+            }
+          : undefined,
+      })),
+    },
+    wonCounts: source.wonCounts,
+    timer: {
+      startedAt: source.timer.startedAt ?? undefined,
+      durationMilliseconds: source.timer.durationMilliseconds,
+      paused: source.timer.paused,
+      remainingAtPauseMilliseconds: source.timer.remainingAtPauseMilliseconds ?? undefined,
+    },
+    robberyUsed: source.robberyUsed,
+    teamPauseUsed: source.teamPauseUsed,
+    rosters: {
+      red: { leaderId: source.rosters.red.leaderID, playerIds: source.rosters.red.playerIDs },
+      blue: { leaderId: source.rosters.blue.leaderID, playerIds: source.rosters.blue.playerIDs },
+    },
+    pendingPieceId: source.pendingPieceID ?? undefined,
+    pendingTBRequest: source.pendingTBRequest
+      ? {
+          id: source.pendingTBRequest.id,
+          requestedBy: source.pendingTBRequest.requestedBy as WSSnapshot["firstBan"],
+          basis: source.pendingTBRequest.basis as TBBasis,
+        }
+      : undefined,
+    tbEntry: source.tbEntry
+      ? {
+          basis: source.tbEntry.basis as TBBasis,
+          requestId: source.tbEntry.requestID ?? undefined,
+          requestedBy: source.tbEntry.requestedBy ?? undefined,
+        }
+      : undefined,
+    winner: source.winner ?? undefined,
+    result: source.result
+      ? {
+          winner: source.result.winner as WSSnapshot["firstBan"],
+          reason: source.result.reason as MatchResultReason,
+          surrenderingTeam: source.result.surrenderingTeam ?? undefined,
+          confirmingPlayerIds: source.result.confirmingPlayerIDs,
+          wonCounts: source.result.wonCounts,
+        }
+      : undefined,
+    stalemate: source.stalemate ? { wonCounts: source.stalemate.wonCounts } : undefined,
+  };
+}
+
+function MatchStageContent({ match }: { match: BootstrapMatch }) {
   const { snapshot: live } = useMatchLive();
-  const snapshot = live ?? null;
+  const snapshot = live ?? toLiveSnapshot(match.snapshot);
   const interactions = useStrategistInteractions(match);
   const referee = useRefereeInteractions(match);
   const animations = useMatchAnimations();
@@ -62,23 +147,22 @@ function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchBy
   const roomLabel = [match.room?.name, match.room?.round].filter(Boolean).join(" · ");
 
   return (
-    <MatchLiveProvider matchId={match.id}>
-      <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col gap-3 p-4">
-        <ConnectionBanner />
-        {animations.winnerFlash && (
-          <WinFlash team={animations.winnerFlash.team} reason={animations.winnerFlash.reason} />
-        )}
-        <MatchHeader
-          matchName={match.name}
-          roomLabel={roomLabel || null}
-          snapshot={snapshot}
-          fallback={fallback}
-        />
-        <MatchSectionErrorBoundary name="phase-banner">
-          {interactions.resultBanner}
-        </MatchSectionErrorBoundary>
+    <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col gap-3 p-4">
+      <ConnectionBanner />
+      {animations.winnerFlash && (
+        <WinFlash team={animations.winnerFlash.team} reason={animations.winnerFlash.reason} />
+      )}
+      <MatchHeader
+        matchName={match.name}
+        roomLabel={roomLabel || null}
+        snapshot={snapshot}
+        fallback={fallback}
+      />
+      <MatchSectionErrorBoundary name="phase-banner">
+        {interactions.resultBanner}
+      </MatchSectionErrorBoundary>
 
-        <main className="grid flex-1 grid-cols-[280px_1fr_350px] gap-4">
+      <main className="grid flex-1 grid-cols-[280px_1fr_350px] gap-4">
           {/* Left column — timer, meta & actor actions */}
           <aside className="flex flex-col gap-3">
             <MatchSectionErrorBoundary name="countdown">
@@ -144,11 +228,18 @@ function MatchStage({ match }: { match: NonNullable<ReturnType<typeof useMatchBy
               />
             </MatchSectionErrorBoundary>
           </aside>
-        </main>
+      </main>
 
-        {interactions.dialogs}
-        {referee.dialogs}
-      </div>
+      {interactions.dialogs}
+      {referee.dialogs}
+    </div>
+  );
+}
+
+function MatchStage({ match }: { match: BootstrapMatch }) {
+  return (
+    <MatchLiveProvider matchId={match.id} initialSnapshot={toLiveSnapshot(match.snapshot)}>
+      <MatchStageContent match={match} />
     </MatchLiveProvider>
   );
 }
