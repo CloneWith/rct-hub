@@ -6,8 +6,8 @@
  * 新房间从零配置到开赛的一条龙入口：
  * - 房间信息 + 成员/角色展示（MembersSection，编辑走 RoomEditDialog）
  * - 图池编辑（MappoolEditor：MOD 分组 + BID 录入 + 前端解析预览 + 未解析保存）
- * - 开赛流程：前端预检（validateRoomForStart，对齐 BuildFormalMatchSeed /
- *   MissingStartRequirements）→ start-match → 跳转棋房。
+ * - 开赛流程：前端预检（buildStartChecklist，对齐 BuildFormalMatchSeed /
+ *   MissingStartRequirements + D3 硬性规则）→ start-match → 跳转棋房。
  *
  * 权限（对齐后端）：
  * - 配置编辑（图池/BP/选手/策略师）：admin；或非 match 房间的 owner
@@ -21,7 +21,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Calendar, ChevronRight, DoorOpen, Flag, Play, ShieldCheck } from "lucide-react";
 import { Button, Chip } from "@heroui/react";
 import { useMe, useRoomByCode, useStartRoomMatch } from "@/app/lib/hooks";
-import { canControlRoom, isAdmin, roomStatusChip, validateRoomForStart } from "@/app/lib/rooms";
+import { canControlRoom, isAdmin, roomStatusChip, buildStartChecklist } from "@/app/lib/rooms";
 import MembersSection from "./components/MembersSection";
 
 const TONE_COLOR: Record<string, "default" | "accent" | "success" | "warning" | "danger"> = {
@@ -81,7 +81,7 @@ function RoomStage({ code }: { code: string }) {
   // 开赛 / MP 链接（对齐 authorizedRoom）。
   const canStart = canControlRoom(user ?? null, room) || owner;
 
-  const validation = validateRoomForStart(room);
+  const validation = buildStartChecklist(room);
 
   const confirmStart = () => {
     // 按钮在预检未通过时禁用，此处必然已通过；后端仍可能返回校验错误
@@ -170,14 +170,27 @@ function RoomStage({ code }: { code: string }) {
                 <ShieldCheck className="mt-0.5 size-4 shrink-0" />
                 <div className="flex flex-col gap-1">
                   <span className="font-medium">
-                    {validation.ok ? "配置完备，可以开赛" : "配置尚不完整，无法开赛"}
+                    {validation.ok
+                      ? validation.warnings.length > 0
+                        ? `配置完备（${validation.warnings.length} 项软提示）`
+                        : "配置完备，可以开赛"
+                      : `配置尚不完整（${validation.errors.length} 项待处理）`}
                   </span>
                   {!validation.ok && (
                     <ul className="list-inside list-disc text-xs leading-relaxed">
-                      {validation.issues.map((issue) => (
-                        <li key={issue.field}>
-                          {issue.label}
+                      {validation.errors.map((issue) => (
+                        <li key={`${issue.field}:${issue.label}`}>
+                          {issue.label} — {issue.detail}
                           <span className="ml-1 opacity-60">{issue.field}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {validation.warnings.length > 0 && (
+                    <ul className="list-inside list-disc text-xs leading-relaxed text-warning">
+                      {validation.warnings.map((issue) => (
+                        <li key={`${issue.field}:${issue.label}`}>
+                          {issue.label} — {issue.detail}（可选）
                         </li>
                       ))}
                     </ul>

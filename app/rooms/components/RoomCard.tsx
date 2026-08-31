@@ -14,7 +14,7 @@ import {
 } from "@heroui/react";
 import { Calendar, ChevronRight, ExternalLink, Link2, Play, User } from "lucide-react";
 import type { AuthUser } from "@/app/lib/hooks";
-import { useSetRoomMPLink, useStartRoomMatch } from "@/app/lib/hooks";
+import { useSetRoomMPLink } from "@/app/lib/hooks";
 import {
   ROOM_TYPE_LABELS,
   canControlRoom,
@@ -22,6 +22,7 @@ import {
   roomStatusChip,
   type RoomItem,
 } from "@/app/lib/rooms";
+import StartChecklistDialog from "./StartChecklistDialog";
 
 const TONE_COLOR: Record<string, "default" | "accent" | "success" | "warning" | "danger"> = {
   neutral: "default",
@@ -82,7 +83,6 @@ export default function RoomCard({
   const [mpInput, setMpInput] = useState("");
   const router = useRouter();
 
-  const startMatch = useStartRoomMatch();
   const setMpLink = useSetRoomMPLink();
 
   const status = roomStatusChip(room);
@@ -107,15 +107,6 @@ export default function RoomCard({
         },
       },
     );
-  };
-
-  const confirmStart = () => {
-    startMatch.mutate(room.id, {
-      onSuccess: () => {
-        toast.success("比赛已开始");
-        setStartOpen(false);
-      },
-    });
   };
 
   // 未开赛 → 赛前配置页；已开赛 → 棋房。
@@ -202,12 +193,7 @@ export default function RoomCard({
                 <Link2 className="size-3.5" />
                 MP 链接
               </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                isDisabled={!canStart || startMatch.isPending}
-                onPress={() => setStartOpen(true)}
-              >
+              <Button size="sm" variant="primary" isDisabled={!canStart} onPress={() => setStartOpen(true)}>
                 <Play className="size-3.5" />
                 {room.matchID == null ? "开赛" : "已开赛"}
               </Button>
@@ -221,35 +207,8 @@ export default function RoomCard({
         </div>
       </div>
 
-      {/* ---- Start-match confirmation ---- */}
-      <Modal isOpen={startOpen} onOpenChange={setStartOpen}>
-        <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog>
-              <Modal.Header>
-                <Modal.Heading>确认开赛</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body>
-                <p className="text-sm text-muted-foreground">
-                  确定为「{room.name}」（{room.code}）开始比赛？开赛后房间配置将被锁定。
-                </p>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button variant="ghost" onPress={() => setStartOpen(false)}>
-                  取消
-                </Button>
-                <Button
-                  variant="primary"
-                  isDisabled={startMatch.isPending}
-                  onPress={confirmStart}
-                >
-                  {startMatch.isPending ? "开赛中..." : "确认开赛"}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      {/* ---- Start-match checklist (P3) ---- */}
+      <StartChecklistDialog room={room} isOpen={startOpen} onOpenChange={setStartOpen} />
 
       {/* ---- MP link editor ---- */}
       <Modal isOpen={mpOpen} onOpenChange={setMpOpen}>
