@@ -37,8 +37,8 @@ export const MeDocument = graphql(`
 // ---------------------------------------------------------------------------
 
 export const UsersDocument = graphql(`
-  query Users($page: Int, $perPage: Int) {
-    users(page: $page, perPage: $perPage) {
+  query Users($search: String, $page: Int, $perPage: Int) {
+    users(search: $search, page: $page, perPage: $perPage) {
       items {
         id
         onlineID
@@ -1024,8 +1024,8 @@ export const AnnouncementsDocument = graphql(`
 // ---------------------------------------------------------------------------
 
 export const BeatmapsDocument = graphql(`
-  query Beatmaps($page: Int, $perPage: Int) {
-    beatmaps(page: $page, perPage: $perPage) {
+  query Beatmaps($search: String, $page: Int, $perPage: Int) {
+    beatmaps(search: $search, page: $page, perPage: $perPage) {
       items {
         id
         onlineID

@@ -253,10 +253,10 @@ export function useMe() {
 // Admin — Users
 // =========================================================================
 
-export function useUsers(enabled = true, page = 1, perPage = 20) {
+export function useUsers(enabled = true, page = 1, perPage = 20, search = "") {
   const { data, isLoading } = useGraphQLPaged(
-    ["admin", "users", page, perPage],
-    () => graphqlRequest(UsersDocument, { page, perPage }),
+    ["admin", "users", page, perPage, search],
+    () => graphqlRequest(UsersDocument, { page, perPage, search: search || undefined }),
     (data) => data.users,
     enabled,
   );
@@ -267,6 +267,28 @@ export function useUsers(enabled = true, page = 1, perPage = 20) {
       : null,
     isLoading,
   };
+}
+
+/**
+ * Search users by keyword or osu! id for autocomplete dropdowns. Pure read
+ * (backend `svc.List` → Mongo), safe for per-keystroke debounced queries.
+ */
+export function useUserSearch(query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["search", "users", query],
+    queryFn: async () => {
+      const res = await graphqlRequest(UsersDocument, {
+        search: query || undefined,
+        page: 1,
+        perPage: 20,
+      });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.users.items ?? [];
+    },
+    enabled: enabled && query.trim().length >= 1,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
 }
 
 export function useUpdateUserRoles() {
@@ -389,10 +411,10 @@ function buildBeatmapPatch(body: Record<string, unknown>): Record<string, unknow
   return patch;
 }
 
-export function useBeatmaps(enabled = true, page = 1, perPage = 20) {
+export function useBeatmaps(enabled = true, page = 1, perPage = 20, search = "") {
   const { data, isLoading } = useGraphQLPaged(
-    ["admin", "beatmaps", page, perPage],
-    () => graphqlRequest(BeatmapsDocument, { page, perPage }),
+    ["admin", "beatmaps", page, perPage, search],
+    () => graphqlRequest(BeatmapsDocument, { page, perPage, search: search || undefined }),
     (data) => data.beatmaps,
     enabled,
   );
@@ -407,6 +429,29 @@ export function useBeatmaps(enabled = true, page = 1, perPage = 20) {
 
 /** Beatmap fetched by osu! id (from `BeatmapByOsuIdQuery`). */
 export type FetchedBeatmap = NonNullable<BeatmapByOsuIdQuery["beatmapByOsuId"]>;
+
+/**
+ * Search beatmaps by keyword or osu! id for autocomplete dropdowns. This is a
+ * pure read (backend `svc.List` hits Mongo directly — no fetch-through upsert),
+ * so it is safe to fire on every debounced keystroke.
+ */
+export function useBeatmapSearch(query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["search", "beatmaps", query],
+    queryFn: async () => {
+      const res = await graphqlRequest(BeatmapsDocument, {
+        search: query || undefined,
+        page: 1,
+        perPage: 20,
+      });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.beatmaps.items ?? [];
+    },
+    enabled: enabled && query.trim().length >= 1,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+}
 
 /**
  * Fetch beatmap metadata by osu! beatmap id. The backend resolver uses the

@@ -340,6 +340,7 @@ export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 export type MeQuery = { me: { id: string, onlineID: string, username: string, countryCode: string, roles: Array<UserRole>, verifyStatus: VerifyStatus, isBanned: boolean, globalRank: number | null, pp: number | null, avatarUrl: string } | null };
 
 export type UsersQueryVariables = Exact<{
+  search?: string | null | undefined;
   page?: number | null | undefined;
   perPage?: number | null | undefined;
 }>;
@@ -609,6 +610,7 @@ export type AnnouncementsQueryVariables = Exact<{
 export type AnnouncementsQuery = { announcements: { page: number, perPage: number, total: number, totalPages: number, items: Array<{ id: string, pinned: boolean, visible: boolean, title: string, content: string, publishedAt: string | null, createdAt: string, author: { id: string, onlineID: string, username: string, avatarUrl: string } | null }> } };
 
 export type BeatmapsQueryVariables = Exact<{
+  search?: string | null | undefined;
   page?: number | null | undefined;
   perPage?: number | null | undefined;
 }>;
@@ -684,8 +686,8 @@ export const MeDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<MeQuery, MeQueryVariables>;
 export const UsersDocument = new TypedDocumentString(`
-    query Users($page: Int, $perPage: Int) {
-  users(page: $page, perPage: $perPage) {
+    query Users($search: String, $page: Int, $perPage: Int) {
+  users(search: $search, page: $page, perPage: $perPage) {
     items {
       id
       onlineID
@@ -1648,8 +1650,8 @@ export const AnnouncementsDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<AnnouncementsQuery, AnnouncementsQueryVariables>;
 export const BeatmapsDocument = new TypedDocumentString(`
-    query Beatmaps($page: Int, $perPage: Int) {
-  beatmaps(page: $page, perPage: $perPage) {
+    query Beatmaps($search: String, $page: Int, $perPage: Int) {
+  beatmaps(search: $search, page: $page, perPage: $perPage) {
     items {
       id
       onlineID
