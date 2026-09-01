@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { Button, Input, Label, ListBox, Modal, Select, TextField, toast } from "@heroui/react";
-import { useMappools, useSetRoomBpOrder, useSetRoomMPLink, useSetRoomMappool, useSetRoomReferee, useSetRoomStreamer, useSetRoomTeams, useSetRoomStreamLink, useTeams, useUpdateRoomMetadata } from "@/app/lib/hooks";
+import { useSetRoomMPLink, useSetRoomMappool, useSetRoomStreamLink, useSetRoomTeams, useUpdateRoomMetadata, useMappools, useTeams } from "@/app/lib/hooks";
 import type { RoomItem } from "@/app/lib/rooms";
-import type { TeamSide } from "@/app/graphql/graphql";
 
 function isoToLocalInput(iso: string | null) {
   if (!iso) return "";
@@ -20,10 +19,6 @@ export default function RoomEditDialog({ room, onClose }: { room: RoomItem; onCl
   const [redTeamId, setRedTeamId] = useState(room.settings.redTeamID ?? "");
   const [blueTeamId, setBlueTeamId] = useState(room.settings.blueTeamID ?? "");
   const [mappoolId, setMappoolId] = useState(room.settings.mappoolID ?? "");
-  const [refereeId, setRefereeId] = useState(room.refereeUserID ?? "");
-  const [streamerId, setStreamerId] = useState(room.settings.streamerUserID ?? "");
-  const [firstPick, setFirstPick] = useState<TeamSide | "">(room.settings.firstPick ?? "");
-  const [firstBan, setFirstBan] = useState<TeamSide | "">(room.settings.firstBan ?? "");
   const [mpLink, setMpLink] = useState(room.settings.mpLink ?? "");
   const [streamLink, setStreamLink] = useState(room.settings.streamLink ?? "");
   const { data: teams = [] } = useTeams(true, 1, 100);
@@ -31,9 +26,6 @@ export default function RoomEditDialog({ room, onClose }: { room: RoomItem; onCl
   const updateMeta = useUpdateRoomMetadata();
   const setTeams = useSetRoomTeams();
   const setPool = useSetRoomMappool();
-  const setReferee = useSetRoomReferee();
-  const setStreamer = useSetRoomStreamer();
-  const setBpOrder = useSetRoomBpOrder();
   const setMp = useSetRoomMPLink();
   const setStream = useSetRoomStreamLink();
 
@@ -50,14 +42,6 @@ export default function RoomEditDialog({ room, onClose }: { room: RoomItem; onCl
         await setTeams.mutateAsync({ id: room.id, redTeamId: redTeamId || null, blueTeamId: blueTeamId || null });
       }
       if (mappoolId !== (room.settings.mappoolID ?? "")) await setPool.mutateAsync({ id: room.id, mappoolId: mappoolId || null });
-      const referee = refereeId ? Number(refereeId) : null;
-      if ((referee === null ? null : String(referee)) !== room.refereeUserID) await setReferee.mutateAsync({ id: room.id, refereeUserId: referee });
-      const streamer = streamerId ? Number(streamerId) : null;
-      if ((streamer === null ? null : String(streamer)) !== room.settings.streamerUserID) await setStreamer.mutateAsync({ id: room.id, streamerUserId: streamer });
-      if (firstPick !== room.settings.firstPick || firstBan !== room.settings.firstBan) {
-        if (!firstPick || !firstBan) { toast.danger("先选方与先禁方均需选择"); return; }
-        await setBpOrder.mutateAsync({ id: room.id, firstPick: firstPick.toLowerCase() as "red" | "blue", firstBan: firstBan.toLowerCase() as "red" | "blue" });
-      }
       if (mpLink.trim() && mpLink.trim() !== (room.settings.mpLink ?? "")) await setMp.mutateAsync({ id: room.id, mpLink: mpLink.trim() });
       if (streamLink.trim() && streamLink.trim() !== (room.settings.streamLink ?? "")) await setStream.mutateAsync({ id: room.id, streamLink: streamLink.trim() });
       toast.success("房间已更新");
@@ -65,7 +49,7 @@ export default function RoomEditDialog({ room, onClose }: { room: RoomItem; onCl
     } catch { /* mutation hook already reports the error */ }
   };
 
-  const pending = [updateMeta, setTeams, setPool, setReferee, setStreamer, setBpOrder, setMp, setStream].some((mutation) => mutation.isPending);
+  const pending = [updateMeta, setTeams, setPool, setMp, setStream].some((mutation) => mutation.isPending);
   return (
     <Modal isOpen onOpenChange={(open) => !open && onClose()}>
       <Modal.Backdrop><Modal.Container><Modal.Dialog className="max-h-[85vh]">
@@ -82,10 +66,6 @@ export default function RoomEditDialog({ room, onClose }: { room: RoomItem; onCl
               ))}
             </div>
             <Select variant="secondary" value={mappoolId} onChange={(v) => setMappoolId(String(v ?? ""))}><Label>图池</Label><Select.Trigger><Select.Value /></Select.Trigger><Select.Popover><ListBox>{mappools.map((pool) => <ListBox.Item key={pool.id} id={pool.id} textValue={pool.name}>{pool.name} · {pool.entries.length} 槽</ListBox.Item>)}</ListBox></Select.Popover></Select>
-          </section>
-          <section className="flex flex-col gap-3"><h3 className="text-sm font-semibold">指派与 BP</h3>
-            <div className="grid gap-3 sm:grid-cols-2"><TextField variant="secondary"><Label>裁判 osu! ID</Label><Input value={refereeId} onChange={(e) => setRefereeId((e.target as HTMLInputElement).value)} /></TextField><TextField variant="secondary"><Label>直播员 osu! ID</Label><Input value={streamerId} onChange={(e) => setStreamerId((e.target as HTMLInputElement).value)} /></TextField></div>
-            <div className="grid gap-3 sm:grid-cols-2">{([['先选方', firstPick, setFirstPick], ['先禁方', firstBan, setFirstBan]] as const).map(([label, value, setter]) => <Select key={label} variant="secondary" value={value} onChange={(v) => setter(v as TeamSide)}><Label>{label}</Label><Select.Trigger><Select.Value /></Select.Trigger><Select.Popover><ListBox>{(['RED', 'BLUE'] as const).map((side) => <ListBox.Item key={side} id={side} textValue={side === 'RED' ? '红方' : '蓝方'}>{side === 'RED' ? '红方' : '蓝方'}</ListBox.Item>)}</ListBox></Select.Popover></Select>)}</div>
           </section>
           <section className="flex flex-col gap-3"><h3 className="text-sm font-semibold">链接</h3><TextField variant="secondary"><Label>MP 链接</Label><Input value={mpLink} onChange={(e) => setMpLink((e.target as HTMLInputElement).value)} /></TextField><TextField variant="secondary"><Label>直播链接</Label><Input value={streamLink} onChange={(e) => setStreamLink((e.target as HTMLInputElement).value)} /></TextField></section>
         </div></Modal.Body>
