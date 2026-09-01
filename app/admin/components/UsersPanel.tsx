@@ -18,13 +18,15 @@ import {
   TextField,
   Input,
 } from "@heroui/react";
-import { Pencil, Search, UserPlus } from "lucide-react";
+import { Pencil, Search, UserPlus, Layers } from "lucide-react";
 import {
+  useBulkCreateUsers,
   useFetchUserByOsuId,
   useSetUserBanned,
   useUpdateUserRoles,
   useUpdateVerifyStatus,
   useUsers,
+  useUserSearch,
   type FetchedUser,
   type UserItem,
 } from "@/app/lib/hooks";
@@ -33,6 +35,7 @@ import RoleBadge from "@/app/components/RoleBadge";
 import PaginationBar from "./PaginationBar";
 import EmptyTableState from "./EmptyTableState";
 import SearchBar from "./SearchBar";
+import BulkAddDialog from "./BulkAddDialog";
 import { AvailableRoles, AvailableVerifyStatuses } from "@/app/lib/model";
 
 const PER_PAGE = 10;
@@ -54,6 +57,9 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
   const [addOsuId, setAddOsuId] = useState(0);
   const [fetchedUser, setFetchedUser] = useState<FetchedUser | null>(null);
 
+  // ---- Bulk add user ----
+  const [bulkModal, setBulkModal] = useState(false);
+
   const perPage = search ? SEARCH_PER_PAGE : PER_PAGE;
 
   const {
@@ -74,6 +80,7 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
   const setBanned = useSetUserBanned();
   const setVerify = useUpdateVerifyStatus();
   const fetchUser = useFetchUserByOsuId();
+  const bulkCreate = useBulkCreateUsers();
 
   const userById = (id: string) => users.find((u) => u.id === id);
 
@@ -156,10 +163,16 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
           }}
           onClear={() => setSearch("")}
         />
-        <Button variant="primary" size="sm" onPress={openAddUser}>
-          <UserPlus className="w-4 h-4"/>
-          添加用户
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onPress={() => setBulkModal(true)}>
+            <Layers className="w-4 h-4"/>
+            批量添加
+          </Button>
+          <Button variant="primary" size="sm" onPress={openAddUser}>
+            <UserPlus className="w-4 h-4"/>
+            添加用户
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -432,6 +445,22 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
           </Modal.Container>
         </Modal.Backdrop>
       </Modal>
+
+      {/* ---- Bulk add users modal ---- */}
+      <BulkAddDialog
+        open={bulkModal}
+        onClose={() => setBulkModal(false)}
+        kind="用户"
+        idLabel="osu! 用户 ID"
+        pending={bulkCreate.isPending}
+        onSubmit={(ids) => bulkCreate.mutateAsync(ids)}
+        lookup={{
+          placeholder: "搜索用户名或 ID",
+          useSearch: useUserSearch,
+          getItemId: (u) => Number(u.onlineID),
+          getItemLabel: (u) => `${u.username} (#${u.onlineID})`,
+        }}
+      />
     </>
   );
 }

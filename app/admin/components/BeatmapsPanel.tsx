@@ -14,9 +14,11 @@ import {
   Table,
   TextField,
 } from "@heroui/react";
-import { ExternalLink, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Search, Trash2, Layers } from "lucide-react";
 import {
   useBeatmaps,
+  useBeatmapSearch,
+  useBulkCreateBeatmaps,
   useCreateBeatmap,
   useDeleteBeatmap,
   useFetchBeatmapByOsuId,
@@ -26,6 +28,7 @@ import {
 import PaginationBar from "./PaginationBar";
 import EmptyTableState from "./EmptyTableState";
 import SearchBar from "./SearchBar";
+import BulkAddDialog from "./BulkAddDialog";
 
 const STATUS_OPTIONS = ["ranked", "loved", "qualified", "graveyard"];
 const PER_PAGE = 10;
@@ -60,6 +63,8 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
     title: string;
   } | null>(null);
 
+  const [bulkModal, setBulkModal] = useState(false);
+
   const perPage = search ? SEARCH_PER_PAGE : PER_PAGE;
 
   const {
@@ -81,6 +86,7 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
   const updateBm = useUpdateBeatmap();
   const deleteBm = useDeleteBeatmap();
   const fetchBm = useFetchBeatmapByOsuId();
+  const bulkCreate = useBulkCreateBeatmaps();
 
   const openBmCreate = () => {
     setBmEditId(null);
@@ -158,10 +164,16 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
           }}
           onClear={() => setSearch("")}
         />
-        <Button variant="primary" size="sm" onPress={openBmCreate}>
-          <Plus className="w-4 h-4"/>
-          新谱面
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onPress={() => setBulkModal(true)}>
+            <Layers className="w-4 h-4"/>
+            批量添加
+          </Button>
+          <Button variant="primary" size="sm" onPress={openBmCreate}>
+            <Plus className="w-4 h-4"/>
+            新谱面
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -459,6 +471,22 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
           </AlertDialog.Container>
         </AlertDialog.Backdrop>
       </AlertDialog>
+
+      {/* ---- Bulk add beatmaps modal ---- */}
+      <BulkAddDialog
+        open={bulkModal}
+        onClose={() => setBulkModal(false)}
+        kind="谱面"
+        idLabel="osu! 谱面 ID"
+        pending={bulkCreate.isPending}
+        onSubmit={(ids) => bulkCreate.mutateAsync(ids)}
+        lookup={{
+          placeholder: "搜索谱面标题、艺术家或 ID",
+          useSearch: useBeatmapSearch,
+          getItemId: (b) => Number(b.onlineID),
+          getItemLabel: (b) => `${b.title} — ${b.artist} (#${b.onlineID})`,
+        }}
+      />
     </>
   );
 }

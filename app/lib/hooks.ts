@@ -18,6 +18,7 @@ import {
   type RoomMetadataInput,
   type RestResponse,
   type GraphQLResponse,
+  type BulkReport,
 } from "./api";
 import { revalidateAnnouncements } from "./revalidate";
 import {
@@ -386,6 +387,24 @@ export function useUpdateVerifyStatus() {
   });
 }
 
+/**
+ * Bulk-add users by osu! id. The backend fetches each id through the 3-tier
+ * fetcher (Redis → Mongo → osu! API) and returns a per-id report. Partial
+ * success is preserved — a few bad ids do not roll back the good ones.
+ * Returns the `BulkReport` so callers can render the per-row outcome.
+ */
+export function useBulkCreateUsers() {
+  const qc = useQueryClient();
+  return useToastedMutation<BulkReport, Error, number[]>({
+    mutationFn: (osuIds: number[]) =>
+      restFetch<BulkReport>("/users/bulk", {
+        method: "POST",
+        body: JSON.stringify({ osu_ids: osuIds }),
+      }).then(throwOnRestError),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+}
+
 // =========================================================================
 // Admin — Beatmaps
 // =========================================================================
@@ -498,6 +517,21 @@ export function useDeleteBeatmap() {
     mutationFn: (id: string) =>
       restFetch(`/beatmaps/${id}`, { method: "DELETE" }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
+  });
+}
+
+/**
+ * Bulk-add beatmaps by osu! beatmap id. Same semantics as `useBulkCreateUsers`.
+ */
+export function useBulkCreateBeatmaps() {
+  const qc = useQueryClient();
+  return useToastedMutation<BulkReport, Error, number[]>({
+    mutationFn: (osuIds: number[]) =>
+      restFetch<BulkReport>("/beatmaps/bulk", {
+        method: "POST",
+        body: JSON.stringify({ osu_ids: osuIds }),
+      }).then(throwOnRestError),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
   });
 }
 

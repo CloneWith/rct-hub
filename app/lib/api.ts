@@ -92,6 +92,23 @@ export interface RestResponse<T = unknown> {
   details?: Array<{ field: string; rule?: string; message?: string }>;
 }
 
+/** Per-ID outcome of a bulk add request. */
+export interface BulkResult {
+  osu_id: number;
+  ok: boolean;
+  id?: string;
+  detail?: string;
+  error?: string;
+}
+
+/** Aggregate response for bulk user/beatmap add requests. */
+export interface BulkReport {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: BulkResult[];
+}
+
 export async function restFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -217,6 +234,12 @@ export const adminBeatmaps = {
   create: (body: Record<string, unknown>) =>
     restFetch("/beatmaps", { method: "POST", body: JSON.stringify(body) }),
 
+  bulkCreate: (osuIds: number[]) =>
+    restFetch<BulkReport>("/beatmaps/bulk", {
+      method: "POST",
+      body: JSON.stringify({ osu_ids: osuIds }),
+    }),
+
   update: (id: string, body: Record<string, unknown>) =>
     restFetch(`/beatmaps/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
@@ -229,6 +252,12 @@ export const adminBeatmaps = {
 // ---------------------------------------------------------------------------
 
 export const adminUsers = {
+  bulkCreate: (osuIds: number[]) =>
+    restFetch<BulkReport>("/users/bulk", {
+      method: "POST",
+      body: JSON.stringify({ osu_ids: osuIds }),
+    }),
+
   updateRoles: (id: string, body: Record<string, unknown>) =>
     restFetch(`/users/${id}/roles`, { method: "PATCH", body: JSON.stringify(body) }),
 
