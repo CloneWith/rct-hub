@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Spinner } from "@heroui/react";
-import { Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ComboBox, Input, Label, ListBox, Spinner } from "@heroui/react";
 
 /**
  * A searchable ID lookup input used wherever an osu! user or beatmap id must be
  * entered. On focus it shows a hint ("输入以显示相关"); typing (debounced) hits
  * the backend search and lists matching entries; clicking one fills it in.
  *
- * Hand-rolled (rather than HeroUI's `ComboBox`) to avoid the `ListBox.Item`
- * `textValue` pitfall and keep the "free ID + pick from suggestions" flow fully
- * controlled.
+ * Built on HeroUI `ComboBox` (react-aria ComboBox) with a fully controlled
+ * `value` + `inputValue`. The backend already returns the filtered list, so the
+ * client-side re-filter is left off (controlled `items` are shown as-is).
  */
 export interface IdLookupInputProps<T> {
   /** Field label (rendered above the input). */
@@ -46,10 +45,10 @@ export default function IdLookupInput<T>({
   onChange,
   disabled,
 }: IdLookupInputProps<T>) {
-  const [query, setQuery] = useState("");
+  // Controlled filter text. Initialized from `value` so an inline edit of an
+  // already-assigned field shows the current id instead of a blank box.
+  const [query, setQuery] = useState(() => (value != null ? String(value) : ""));
   const [debounced, setDebounced] = useState("");
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Debounce the search input (250ms) so we don't hit the backend per keystroke.
   useEffect(() => {
@@ -57,86 +56,75 @@ export default function IdLookupInput<T>({
     return () => clearTimeout(t);
   }, [query]);
 
-  // Close the dropdown on outside click.
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [open]);
+  const { data = [], isLoading } = useSearch(debounced, debounced.length >= 1);
 
-  const { data = [], isLoading } = useSearch(debounced, open && debounced.length >= 1);
+  // Map backend results to collection items keyed by osu! id, so the selected
+  // value is the osu! id (not the Mongo ObjectID carried on the entity).
+  const items = useMemo(
+    () => data.map((item) => ({ id: String(getItemId(item)), value: item })),
+    [data, getItemId],
+  );
 
-  // Sync the input text with the controlled `value`:
-  //  - cleared (null) → clear the text so a stale label doesn't linger;
-  //  - set from outside (e.g. starting an inline edit of an existing
-  //    assignment) → show the current id so the user can edit/confirm it.
-  // A manual keystroke resets `value` to null (see the input handler), which
-  // then clears the text — so we don't fight the user's own typing.
-  useEffect(() => {
-    if (value == null) setQuery("");
-    else setQuery(String(value));
-  }, [value]);
+  const handleChange = (key: string | number | null) => {
+    if (key == null) {
+      onChange(null);
+      return;
+    }
+    const id = Number(key);
+    const entry = items.find((e) => Number(e.id) === id);
+    onChange(id, entry?.value);
+    setQuery(entry ? getItemLabel(entry.value) : String(id));
+  };
 
-  const pick = (item: T) => {
-    onChange(getItemId(item), item);
-    setQuery(getItemLabel(item));
-    setOpen(false);
+  const handleInputChange = (q: string) => {
+    setQuery(q);
+    // A manual edit resets the selected value until a suggestion is picked.
+    onChange(null);
   };
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      {label && <label className="mb-1 block text-sm font-medium">{label}</label>}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          value={query}
-          disabled={disabled}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            // A manual edit resets the selected value until a suggestion is picked.
-            onChange(null);
-            setOpen(true);
+    <ComboBox.Root
+      value={value != null ? String(value) : null}
+      onChange={handleChange}
+      inputValue={query}
+      onInputChange={handleInputChange}
+      items={items}
+      isDisabled={disabled}
+      allowsEmptyCollection
+      variant="secondary"
+      fullWidth
+      className="w-full"
+    >
+      {label && <Label>{label}</Label>}
+      <ComboBox.InputGroup>
+        <Input placeholder={placeholder} />
+        <ComboBox.Trigger />
+      </ComboBox.InputGroup>
+      <ComboBox.Popover>
+        <ListBox
+          renderEmptyState={() =>
+            isLoading ? (
+              <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                <Spinner size="sm" />
+                搜索中…
+              </div>
+            ) : (
+              <div className="px-3 py-3 text-sm text-muted-foreground">
+                {debounced.length < 1 ? "输入以显示相关" : "无结果"}
+              </div>
+            )
+          }
+        >
+          {(entry) => {
+            const item = (entry as { id: string; value: T }).value;
+            return (
+              <ListBox.Item textValue={getItemLabel(item)}>
+                {renderItem ? renderItem(item) : getItemLabel(item)}
+              </ListBox.Item>
+            );
           }}
-          onFocus={() => setOpen(true)}
-          placeholder={placeholder}
-          className="w-full rounded-xl border border-default-200 bg-default-50 py-2 pl-9 pr-3 text-sm outline-none focus:border-primary disabled:opacity-50"
-        />
-      </div>
-
-      {open && !disabled && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-default-200 bg-default-50 shadow-lg">
-          {isLoading ? (
-            <div className="flex items-center justify-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-              <Spinner size="sm" />
-              搜索中…
-            </div>
-          ) : debounced.length < 1 ? (
-            <div className="px-3 py-4 text-sm text-muted-foreground">输入以显示相关</div>
-          ) : data.length === 0 ? (
-            <div className="px-3 py-4 text-sm text-muted-foreground">无结果</div>
-          ) : (
-            <ul className="max-h-64 overflow-y-auto">
-              {data.map((item) => (
-                <li key={getItemId(item)}>
-                  <button
-                    type="button"
-                    onClick={() => pick(item)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-default-100"
-                  >
-                    {renderItem ? renderItem(item) : getItemLabel(item)}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
+        </ListBox>
+      </ComboBox.Popover>
+    </ComboBox.Root>
   );
 }

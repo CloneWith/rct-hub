@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Button, Modal, toast } from "@heroui/react";
+import { Button, Label, Modal, TextArea, TextField, toast } from "@heroui/react";
 import { Layers, X } from "lucide-react";
 import type { BulkReport } from "@/app/lib/api";
 import IdLookupInput from "@/app/components/IdLookupInput";
@@ -143,7 +143,7 @@ export default function BulkAddDialog<T = unknown>({
                 <div className="flex flex-col gap-4">
                   {lookup && (
                     <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium">搜索添加</label>
+                      <Label>搜索添加</Label>
                       <IdLookupInput<T>
                         placeholder={lookup.placeholder ?? `搜索 ${kind} 名称或 ID`}
                         useSearch={lookup.useSearch}
@@ -160,16 +160,16 @@ export default function BulkAddDialog<T = unknown>({
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium">{idLabel}（每行一个，也支持空格或逗号分隔）</label>
-                    <textarea
+                  <TextField variant="secondary">
+                    <Label>{idLabel}（每行一个，也支持空格或逗号分隔）</Label>
+                    <TextArea
                       value={raw}
-                      onChange={(e) => setRaw(e.target.value)}
+                      onChange={(e) => setRaw((e.target as HTMLTextAreaElement).value)}
                       rows={5}
                       placeholder={`每行输入一个 ${idLabel}`}
-                      className="w-full resize-y rounded-xl border border-default-200 bg-default-50 px-3 py-2 font-mono text-sm outline-none focus:border-primary"
+                      className="font-mono"
                     />
-                  </div>
+                  </TextField>
 
                   {picked.length > 0 && (
                     <div className="flex flex-wrap gap-2">
