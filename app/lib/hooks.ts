@@ -1022,7 +1022,23 @@ export type MatchByCodeResult = {
   code: string;
   name: string;
   roomType: string;
-  room: { name: string; round: string; settings: { mpLink: string | null } } | null;
+  /** MongoDB ObjectID of the underlying room; needed for `markStrategistReady`. */
+  roomID: string;
+  /** Two-phase lifecycle status (PENDING/READY/ACTIVE/FINISHED/CANCELED). */
+  status: "PENDING" | "READY" | "ACTIVE" | "FINISHED" | "CANCELED";
+  /** Strategist readiness sub-doc (one-shot bits per side). */
+  strategistReadiness: {
+    redReady: boolean;
+    blueReady: boolean;
+  };
+  room:
+    | {
+        id: string;
+        name: string;
+        round: string;
+        settings: { mpLink: string | null };
+      }
+    | null;
   pool: Array<{
     poolSlotID: string;
     metadataStatus: string;

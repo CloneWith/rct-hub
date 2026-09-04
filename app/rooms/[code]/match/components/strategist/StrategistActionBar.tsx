@@ -10,6 +10,12 @@
  *
  * D9: during WAITING_FOR_RESULT the strategist sees a read-only waiting note,
  * never a confirm button.
+ *
+ * Two-phase start: when the match is in PENDING status, the strategist sees
+ * a one-shot "准备" (Ready) button — the only confirmation the strategist
+ * gives to advance the start sequence. After pressing, the UI locks the
+ * button and shows the appropriate waiting note ("等待对方策略师" / "等待
+ * 裁判确认").
  */
 
 import type { MatchActorAnalysis } from "@/app/lib/hooks";
@@ -27,6 +33,14 @@ export default function StrategistActionBar({
   snapshot,
   analysis,
   selectedSlotID,
+  matchStatus,
+  myReady,
+  bothReady,
+  showReadyButton,
+  isReadyPending,
+  readyFeedback,
+  onMarkReady,
+  clearReadyFeedback,
   feedback,
   clearFeedback,
 }: {
@@ -35,6 +49,14 @@ export default function StrategistActionBar({
   snapshot: WSSnapshot | null;
   analysis: MatchActorAnalysis;
   selectedSlotID: string | null;
+  matchStatus: "PENDING" | "READY" | "ACTIVE" | "FINISHED" | "CANCELED";
+  myReady: boolean;
+  bothReady: boolean;
+  showReadyButton: boolean;
+  isReadyPending: boolean;
+  readyFeedback: CommandFeedback | null;
+  onMarkReady: () => void;
+  clearReadyFeedback: () => void;
   feedback: CommandFeedback | null;
   clearFeedback: () => void;
 }) {
@@ -53,7 +75,25 @@ export default function StrategistActionBar({
     guide = "流局待裁决，请等待裁判处理";
     guideTone = "wait";
   } else if (lifecycle !== "RUNNING") {
-    guide = "比赛尚未开始";
+    // The match has not actually started yet — gate everything by status.
+    if (matchStatus === "PENDING") {
+      if (showReadyButton) {
+        guide = "比赛尚未开始 — 点击下方按钮确认准备";
+        guideTone = "action";
+      } else if (myReady && !bothReady) {
+        guide = "已确认准备，等待对方策略师…";
+        guideTone = "wait";
+      } else {
+        guide = "等待双方策略师准备…";
+        guideTone = "wait";
+      }
+    } else if (matchStatus === "READY") {
+      // Both strategists ready; awaiting referee confirmation (formal room).
+      guide = "双方策略师已就位，等待裁判确认开赛";
+      guideTone = "wait";
+    } else {
+      guide = "比赛尚未开始";
+    }
   } else if (phase === "BAN") {
     guide = isMyTurn
       ? "轮到你了：点击图池中的可 Ban 槽位"
@@ -114,6 +154,43 @@ export default function StrategistActionBar({
       >
         {guide}
       </p>
+
+      {/* Two-phase start: one-shot readiness button (only visible to a
+          strategist whose side has not yet pressed Ready). */}
+      {showReadyButton && (
+        <button
+          type="button"
+          disabled={isReadyPending}
+          onClick={onMarkReady}
+          className="mt-2 w-full rounded-md border border-success/40 bg-success/10 px-3 py-2 text-xs font-semibold text-success transition-colors enabled:hover:bg-success/20 disabled:opacity-60"
+          title="点击后不可撤回，是推进开赛流程的唯一一次确认"
+        >
+          {isReadyPending ? "提交中…" : "准备就绪（确认开赛准备）"}
+        </button>
+      )}
+
+      {/* Once pressed, lock the button visually so the user knows it is a
+          one-shot action; backend also rejects duplicates. */}
+      {matchStatus === "PENDING" && myReady && !showReadyButton && (
+        <p className="mt-2 rounded-md border border-border bg-background/40 px-3 py-1.5 text-center text-[0.65rem] text-muted-foreground">
+          ✓ 已准备就绪
+        </p>
+      )}
+
+      {readyFeedback && (
+        <button
+          type="button"
+          onClick={clearReadyFeedback}
+          className={`mt-2 block w-full rounded border px-2 py-1.5 text-left text-xs ${
+            readyFeedback.kind === "ok"
+              ? "border-success/40 bg-success/10 text-success"
+              : "border-danger/40 bg-danger/10 text-danger"
+          }`}
+          title="点击关闭"
+        >
+          {readyFeedback.message}
+        </button>
+      )}
 
       {feedback && (
         <button

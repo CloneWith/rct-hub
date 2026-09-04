@@ -35,6 +35,23 @@ import type {
 
 type BootstrapMatch = NonNullable<ReturnType<typeof useMatchByCode>["data"]>;
 
+function matchStatusText(
+  status: "PENDING" | "READY" | "ACTIVE" | "FINISHED" | "CANCELED",
+): string {
+  switch (status) {
+    case "PENDING":
+      return "开赛阶段：等待策略师确认准备";
+    case "READY":
+      return "开赛阶段：等待裁判确认开赛";
+    case "ACTIVE":
+      return "进行中";
+    case "FINISHED":
+      return "已结束";
+    case "CANCELED":
+      return "已取消";
+  }
+}
+
 function toLiveSnapshot(source: BootstrapMatch["snapshot"]): WSSnapshot {
   return {
     version: Number(source.version),
@@ -170,6 +187,9 @@ function MatchStageContent({ match }: { match: BootstrapMatch }) {
             </MatchSectionErrorBoundary>
             <div className="rounded-lg border border-border bg-background/40 p-3 text-xs text-muted-foreground">
               <p>状态：{LIFECYCLE_LABELS[snapshot?.lifecycle ?? fallback.lifecycle]}</p>
+              <p className="mt-1">
+                {matchStatusText(match.status)}
+              </p>
               <p className="mt-1">
                 先手：{snapshot ? (snapshot.firstPick === "RED" ? "红方" : "蓝方") : "—"}
                 {" · "}首 Ban：{snapshot ? (snapshot.firstBan === "RED" ? "红方" : "蓝方") : "—"}

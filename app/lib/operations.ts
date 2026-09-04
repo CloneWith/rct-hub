@@ -255,7 +255,14 @@ export const MatchByCodeDocument = graphql(`
       code
       name
       roomType
+      roomID
+      status
+      strategistReadiness {
+        redReady
+        blueReady
+      }
       room {
+        id
         name
         round
         settings {
@@ -544,6 +551,30 @@ export const RespondTbRequestDocument = graphql(`
         code
         message
         currentVersion
+      }
+    }
+  }
+`);
+
+// ---------------------------------------------------------------------------
+// Mutation — Two-phase start
+//
+// 第二阶段开赛第一步：策略师确认准备。这是策略师推进开赛的"唯一一次确认"，
+// 后端以 status filter 原子地翻转 readiness 位，不可撤回。
+// 服务端返回完整 Match 以便前端立即刷新 UI（无需再次请求 matchByCode）。
+// ---------------------------------------------------------------------------
+
+export const MarkStrategistReadyDocument = graphql(`
+  mutation MarkStrategistReady($roomId: ID!) {
+    markStrategistReady(roomId: $roomId) {
+      id
+      status
+      strategistReadiness {
+        redReady
+        blueReady
+      }
+      snapshot {
+        lifecycle
       }
     }
   }

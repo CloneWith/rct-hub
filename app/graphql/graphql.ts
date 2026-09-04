@@ -195,6 +195,13 @@ export type MatchResultReason =
   | 'SURRENDER'
   | 'TB';
 
+export type MatchStatus =
+  | 'ACTIVE'
+  | 'CANCELED'
+  | 'FINISHED'
+  | 'PENDING'
+  | 'READY';
+
 export type PieceMod =
   | 'DT'
   | 'FM'
@@ -372,7 +379,7 @@ export type MatchByCodeQueryVariables = Exact<{
 }>;
 
 
-export type MatchByCodeQuery = { matchByCode: { id: string, code: string, name: string, roomType: RoomType, room: { name: string, round: string, settings: { mpLink: string | null } } | null, pool: Array<{ poolSlotID: string, metadataStatus: BeatmapMetadataStatus, beatmap: { onlineID: string, title: string, artist: string, difficultyName: string, starRating: number, bpm: number, totalLength: number, coverUrl: string } | null }>, snapshot: { version: string, lifecycle: MatchLifecycle, phase: FormalMatchPhase, firstBan: TeamSide, firstPick: TeamSide, turn: number, activeTeam: TeamSide | null, pendingPieceID: string | null, winner: TeamSide | null, poolSlots: Array<{ id: string, mod: PieceMod, state: PoolSlotState }>, board: { cells: Array<{ cell: string, row: number, col: number, zone: FormalBoardZone, piece: { id: string, sourcePoolSlotID: string, mod: PieceMod, forceMod: ForceMod | null, selectedBy: TeamSide, owner: TeamSide | null, outcome: BoardPieceOutcome } | null }> }, wonCounts: { red: number, blue: number }, timer: { startedAt: string | null, durationMilliseconds: number, paused: boolean, remainingAtPauseMilliseconds: number | null }, robberyUsed: { red: boolean, blue: boolean }, teamPauseUsed: { red: boolean, blue: boolean }, rosters: { red: { leaderID: string, playerIDs: Array<string> }, blue: { leaderID: string, playerIDs: Array<string> } }, pendingTBRequest: { id: string, requestedBy: TeamSide, basis: TbBasis } | null, tbEntry: { basis: TbBasis, requestID: string | null, requestedBy: TeamSide | null } | null, result: { winner: TeamSide, reason: MatchResultReason, surrenderingTeam: TeamSide | null, confirmingPlayerIDs: Array<string>, wonCounts: { red: number, blue: number } } | null, stalemate: { wonCounts: { red: number, blue: number } } | null }, strategistView: { isMyTurn: boolean, myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null, captainView: { myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null, refereeView: { matchID: string, suspensionReason: string | null, abortReason: string | null, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> }, auditLog: Array<{ actionId: string, sequence: string, commandType: string, previousVersion: string, resultingVersion: string, timestamp: string, reason: string | null, actor: { osuID: string, capability: MatchActorCapability, team: TeamSide | null, adminOverride: boolean, refereeOverride: boolean } }>, automationIssues: Array<{ eventID: string, sequence: string, eventType: MatchEventType, attempts: number, lastError: string, occurredAt: string }> } | null } | null };
+export type MatchByCodeQuery = { matchByCode: { id: string, code: string, name: string, roomType: RoomType, roomID: string, status: MatchStatus, strategistReadiness: { redReady: boolean, blueReady: boolean }, room: { id: string, name: string, round: string, settings: { mpLink: string | null } } | null, pool: Array<{ poolSlotID: string, metadataStatus: BeatmapMetadataStatus, beatmap: { onlineID: string, title: string, artist: string, difficultyName: string, starRating: number, bpm: number, totalLength: number, coverUrl: string } | null }>, snapshot: { version: string, lifecycle: MatchLifecycle, phase: FormalMatchPhase, firstBan: TeamSide, firstPick: TeamSide, turn: number, activeTeam: TeamSide | null, pendingPieceID: string | null, winner: TeamSide | null, poolSlots: Array<{ id: string, mod: PieceMod, state: PoolSlotState }>, board: { cells: Array<{ cell: string, row: number, col: number, zone: FormalBoardZone, piece: { id: string, sourcePoolSlotID: string, mod: PieceMod, forceMod: ForceMod | null, selectedBy: TeamSide, owner: TeamSide | null, outcome: BoardPieceOutcome } | null }> }, wonCounts: { red: number, blue: number }, timer: { startedAt: string | null, durationMilliseconds: number, paused: boolean, remainingAtPauseMilliseconds: number | null }, robberyUsed: { red: boolean, blue: boolean }, teamPauseUsed: { red: boolean, blue: boolean }, rosters: { red: { leaderID: string, playerIDs: Array<string> }, blue: { leaderID: string, playerIDs: Array<string> } }, pendingTBRequest: { id: string, requestedBy: TeamSide, basis: TbBasis } | null, tbEntry: { basis: TbBasis, requestID: string | null, requestedBy: TeamSide | null } | null, result: { winner: TeamSide, reason: MatchResultReason, surrenderingTeam: TeamSide | null, confirmingPlayerIDs: Array<string>, wonCounts: { red: number, blue: number } } | null, stalemate: { wonCounts: { red: number, blue: number } } | null }, strategistView: { isMyTurn: boolean, myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null, captainView: { myTeam: TeamSide, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> } } | null, refereeView: { matchID: string, suspensionReason: string | null, abortReason: string | null, analysis: { allowedActions: Array<MatchAction>, banPoolSlotIDs: Array<string>, shiroCells: Array<string>, pendingTBRequestID: string | null, canAcceptTBRequest: boolean, canRejectTBRequest: boolean, tbRequestTeams: Array<TeamSide>, tbResponseTeams: Array<TeamSide>, legalPlacements: Array<{ poolSlotID: string, cell: string, forceMod: ForceMod | null }>, robberyPlans: Array<{ targetPieceID: string, sacrificeSets: Array<Array<string>> }> }, auditLog: Array<{ actionId: string, sequence: string, commandType: string, previousVersion: string, resultingVersion: string, timestamp: string, reason: string | null, actor: { osuID: string, capability: MatchActorCapability, team: TeamSide | null, adminOverride: boolean, refereeOverride: boolean } }>, automationIssues: Array<{ eventID: string, sequence: string, eventType: MatchEventType, attempts: number, lastError: string, occurredAt: string }> } | null } | null };
 
 export type BanPoolSlotMutationVariables = Exact<{
   input: BanPoolSlotInput;
@@ -415,6 +422,13 @@ export type RespondTbRequestMutationVariables = Exact<{
 
 
 export type RespondTbRequestMutation = { respondTbRequest: { success: boolean, commandId: string, disposition: MatchCommandDisposition | null, previousVersion: string | null, resultingVersion: string | null, currentVersion: string | null, error: { code: MatchErrorCode, message: string, currentVersion: string | null } | null } };
+
+export type MarkStrategistReadyMutationVariables = Exact<{
+  roomId: string | number;
+}>;
+
+
+export type MarkStrategistReadyMutation = { markStrategistReady: { id: string, status: MatchStatus, strategistReadiness: { redReady: boolean, blueReady: boolean }, snapshot: { lifecycle: MatchLifecycle } } };
 
 export type StartMatchMutationVariables = Exact<{
   input: CommandMeta;
@@ -913,7 +927,14 @@ export const MatchByCodeDocument = new TypedDocumentString(`
     code
     name
     roomType
+    roomID
+    status
+    strategistReadiness {
+      redReady
+      blueReady
+    }
     room {
+      id
       name
       round
       settings {
@@ -1219,6 +1240,21 @@ export const RespondTbRequestDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RespondTbRequestMutation, RespondTbRequestMutationVariables>;
+export const MarkStrategistReadyDocument = new TypedDocumentString(`
+    mutation MarkStrategistReady($roomId: ID!) {
+  markStrategistReady(roomId: $roomId) {
+    id
+    status
+    strategistReadiness {
+      redReady
+      blueReady
+    }
+    snapshot {
+      lifecycle
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<MarkStrategistReadyMutation, MarkStrategistReadyMutationVariables>;
 export const StartMatchDocument = new TypedDocumentString(`
     mutation StartMatch($input: CommandMeta!) {
   startMatch(input: $input) {

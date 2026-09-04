@@ -74,6 +74,13 @@ export function useRefereeInteractions(match: MatchByCodeResult) {
   const phase = snapshot?.phase ?? null;
   const lifecycle = snapshot?.lifecycle ?? null;
   const activeTeam = snapshot?.activeTeam ?? null;
+  const matchStatus = match.status;
+  const readiness = match.strategistReadiness;
+  // surface two-phase start info into the console; only meaningful when the
+  // match is still in PENDING status (engine lifecycle is still "READY").
+  const awaitingStrategists =
+    matchStatus === "PENDING" &&
+    !(readiness?.redReady && readiness?.blueReady);
 
   // --- local UI state
   const [actingTeam, setActingTeam] = useState<ActingTeam>("RED");
@@ -392,6 +399,10 @@ export function useRefereeInteractions(match: MatchByCodeResult) {
       actingTeam={actingTeam}
       isPending={anyPending}
       feedback={feedback}
+      matchStatus={matchStatus}
+      redReady={readiness?.redReady ?? false}
+      blueReady={readiness?.blueReady ?? false}
+      awaitingStrategists={awaitingStrategists}
       onClearFeedback={clearFeedback}
       onToggleActingTeam={setActingTeam}
       onStartMatch={() => void start.mutate({})}

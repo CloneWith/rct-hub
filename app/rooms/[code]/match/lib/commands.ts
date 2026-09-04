@@ -20,6 +20,7 @@
 
 import { graphqlRequest } from "@/app/lib/api";
 import type { TypedDocumentString } from "@/app/graphql/graphql";
+import type { MarkStrategistReadyMutation } from "@/app/graphql/graphql";
 import {
   AbortMatchDocument,
   BanPoolSlotDocument,
@@ -28,6 +29,7 @@ import {
   ConfirmIRCResultDocument,
   ConfirmTbResultDocument,
   GrantAdditionalTimeDocument,
+  MarkStrategistReadyDocument,
   PauseTimerDocument,
   PlacePieceDocument,
   PlaceShiroDocument,
@@ -396,6 +398,51 @@ function metaOf(args: CommandMetaArgs): CommandMetaArgs {
     matchId: args.matchId,
     expectedVersion: args.expectedVersion,
     commandId: args.commandId,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Two-phase start: strategist readiness
+//
+// 与正式 match command 不同，此 mutation 不需要 CommandMeta（没有
+// expectedVersion / commandId）：它直接操作 `Match.status` 的 readiness 子文档，
+// 后端用 status filter 原子地翻转 readiness 位，并以原子事务触发系统级
+// START_MATCH (casual/private) 或保留 READY 等待裁判 (match)。
+//
+// 返回更新后的 Match (id/status/strategistReadiness/snapshot.lifecycle)，
+// 调用方负责把 readiness 状态合并回本地视图/缓存。
+// ---------------------------------------------------------------------------
+
+export interface MarkStrategistReadyResult {
+  matchId: string;
+  status: "PENDING" | "READY" | "ACTIVE" | "FINISHED" | "CANCELED";
+  redReady: boolean;
+  blueReady: boolean;
+  lifecycle: string;
+}
+
+export async function markStrategistReady(args: {
+  roomId: string;
+}): Promise<MarkStrategistReadyResult> {
+  let res: Awaited<ReturnType<typeof graphqlRequest<MarkStrategistReadyMutation, { roomId: string }>>>;
+  try {
+    res = await graphqlRequest(MarkStrategistReadyDocument, { roomId: args.roomId });
+  } catch {
+    throw new CommandTransportError();
+  }
+  if (res.errors?.length) {
+    throw new CommandTransportError(res.errors[0].message);
+  }
+  const m = res.data?.markStrategistReady;
+  if (!m) {
+    throw new CommandTransportError("空响应");
+  }
+  return {
+    matchId: m.id,
+    status: m.status,
+    redReady: m.strategistReadiness.redReady,
+    blueReady: m.strategistReadiness.blueReady,
+    lifecycle: m.snapshot.lifecycle,
   };
 }
 

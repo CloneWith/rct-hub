@@ -20,21 +20,25 @@
  */
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { MatchByCodeResult } from "@/app/lib/hooks";
 import { useMatchLive } from "../MatchLiveProvider";
 import {
   banPoolSlot,
+  markStrategistReady,
   placePiece,
   placeShiro,
   requestTb,
   respondTbRequest,
   robPiece,
+  CommandTransportError,
 } from "./commands";
 import { cellToPosition } from "./board";
 import { loadSoundEnabled, playEffect } from "./sounds";
 import {
   newTbRequestId,
   useMatchCommand,
+  type CommandFeedback,
 } from "./useMatchCommands";
 import CaptainActionBar from "../components/strategist/CaptainActionBar";
 import ResultWaitingBanner from "../components/strategist/ResultWaitingBanner";
@@ -43,11 +47,14 @@ import StrategistActionBar from "../components/strategist/StrategistActionBar";
 import TBRequestDialog from "../components/strategist/TBRequestDialog";
 
 export function useStrategistInteractions(match: MatchByCodeResult) {
-  const { snapshot } = useMatchLive();
+  const { snapshot, matchId, resync } = useMatchLive();
+  const qc = useQueryClient();
   const strategist = match.strategistView;
   const captain = match.captainView;
   const phase = snapshot?.phase;
   const lifecycle = snapshot?.lifecycle;
+  const matchStatus = match.status;
+  const readiness = match.strategistReadiness;
 
   // --- local UI state (all selection happens locally; submit is the only write)
   const [selectedSlotID, setSelectedSlotID] = useState<string | null>(null);
@@ -57,6 +64,10 @@ export function useStrategistInteractions(match: MatchByCodeResult) {
   } | null>(null);
   const [tbOpen, setTbOpen] = useState(false);
 
+  // --- readiness feedback (local-only — readiness is one-shot per strategist)
+  const [readyPending, setReadyPending] = useState(false);
+  const [readyFeedback, setReadyFeedback] = useState<CommandFeedback | null>(null);
+
   // --- command hooks
   const ban = useMatchCommand(banPoolSlot);
   const place = useMatchCommand(placePiece, { onSuccess: () => setSelectedSlotID(null) });
@@ -64,6 +75,18 @@ export function useStrategistInteractions(match: MatchByCodeResult) {
   const rob = useMatchCommand(robPiece, { onSuccess: () => setRobTarget(null) });
   const tbReq = useMatchCommand(requestTb, { onSuccess: () => setTbOpen(false) });
   const tbResp = useMatchCommand(respondTbRequest);
+
+  // Strategy-side readiness is fixed at fetch time; use the bootstrap result,
+  // refreshed whenever the bootstrap query is invalidated (e.g. via
+  // `markStrategistReady` mutation onSuccess below).
+  const myReadyBit =
+    strategist?.myTeam === "RED"
+      ? readiness?.redReady ?? false
+      : readiness?.blueReady ?? false;
+  const bothReady =
+    (readiness?.redReady ?? false) && (readiness?.blueReady ?? false);
+  const showReadyButton =
+    Boolean(strategist) && matchStatus === "PENDING" && !myReadyBit;
 
   const canAct = Boolean(
     strategist?.isMyTurn && lifecycle === "RUNNING" && strategist,
@@ -172,6 +195,29 @@ export function useStrategistInteractions(match: MatchByCodeResult) {
     [captainAnalysis, tbResp],
   );
 
+  // --- readiness (two-phase start)
+  const onMarkReady = useCallback(async () => {
+    if (readyPending) return;
+    setReadyPending(true);
+    try {
+      await markStrategistReady({ roomId: match.roomID });
+      // Server is the source of truth — refetch the bootstrap so the strategist
+      // sees the flipped readiness bit and (if both sides are now ready and the
+      // room is casual/private) the auto-started lifecycle.
+      await qc.invalidateQueries({ queryKey: ["match", match.code] });
+      resync();
+      setReadyFeedback({ kind: "ok", message: "已确认准备" });
+    } catch (err) {
+      const msg =
+        err instanceof CommandTransportError ? err.message : "提交失败，请重试";
+      setReadyFeedback({ kind: "error", message: msg });
+    } finally {
+      setReadyPending(false);
+    }
+  }, [readyPending, match.roomID, match.code, qc, resync]);
+
+  const clearReadyFeedback = useCallback(() => setReadyFeedback(null), []);
+
   // --- feedback aggregation (latest non-null wins)
   const strategistFeedback =
     ban.feedback ?? place.feedback ?? shiro.feedback ?? rob.feedback;
@@ -196,6 +242,14 @@ export function useStrategistInteractions(match: MatchByCodeResult) {
       snapshot={snapshot}
       analysis={strategist.analysis}
       selectedSlotID={selectedSlotID}
+      matchStatus={matchStatus}
+      myReady={myReadyBit}
+      bothReady={bothReady}
+      showReadyButton={showReadyButton}
+      isReadyPending={readyPending}
+      readyFeedback={readyFeedback}
+      onMarkReady={onMarkReady}
+      clearReadyFeedback={clearReadyFeedback}
       feedback={strategistFeedback}
       clearFeedback={clearStrategistFeedback}
     />

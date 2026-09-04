@@ -210,6 +210,13 @@ export interface RefereeConsoleProps {
   actingTeam: ActingTeam;
   isPending: boolean;
   feedback: CommandFeedback | null;
+  /** Two-phase start: match.status (PENDING/READY/ACTIVE/FINISHED/CANCELED). */
+  matchStatus: "PENDING" | "READY" | "ACTIVE" | "FINISHED" | "CANCELED";
+  /** Per-side strategist readiness (one-shot bits). */
+  redReady: boolean;
+  blueReady: boolean;
+  /** Convenience: status==PENDING && at least one side has not yet pressed Ready. */
+  awaitingStrategists: boolean;
   onClearFeedback: () => void;
   onToggleActingTeam: (t: ActingTeam) => void;
   // lifecycle & flow
@@ -251,7 +258,18 @@ export interface RefereeConsoleProps {
 }
 
 export default function RefereeConsole(props: RefereeConsoleProps) {
-  const { referee, lifecycle, phase, activeTeam, actingTeam, isPending } = props;
+  const {
+    referee,
+    lifecycle,
+    phase,
+    activeTeam,
+    actingTeam,
+    isPending,
+    matchStatus,
+    redReady,
+    blueReady,
+    awaitingStrategists,
+  } = props;
   const analysis = referee.analysis;
   const allowed = new Set(analysis.allowedActions);
 
@@ -359,6 +377,22 @@ export default function RefereeConsole(props: RefereeConsoleProps) {
           <p className="mt-1.5 text-[0.65rem] text-danger">
             中止原因：{referee.abortReason}
           </p>
+        )}
+        {awaitingStrategists && (
+          <div className="mt-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1.5 text-[0.65rem] text-warning">
+            <p className="font-semibold">等待双方策略师确认准备</p>
+            <p className="mt-0.5 text-warning/80">
+              红方{redReady ? "✓" : "…"} · 蓝方{blueReady ? "✓" : "…"}
+            </p>
+            <p className="mt-0.5 text-warning/70">
+              全部确认后方可开赛
+            </p>
+          </div>
+        )}
+        {matchStatus === "READY" && (
+          <div className="mt-1.5 rounded-md border border-success/40 bg-success/10 px-2 py-1.5 text-[0.65rem] text-success">
+            双方策略师已就绪 — 点击"开始比赛"确认开赛
+          </div>
         )}
         {props.feedback && (
           <p

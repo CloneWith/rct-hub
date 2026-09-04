@@ -319,13 +319,6 @@ export function buildStartChecklist(room: StartChecklistInput): StartChecklist {
   // ---- Group 3: 裁判与直播 ----
   const staff: StartChecklistItem[] = [
     startItem(
-      "referee_user_id",
-      "比赛裁判",
-      room.refereeUserID ? "ok" : "error",
-      room.refereeUserID ? `已指定（#${room.refereeUserID}）` : "未指定",
-      room.refereeUserID ? "" : "在配置页指定裁判",
-    ),
-    startItem(
       "settings.streamer_user_id",
       "直播员",
       s.streamerUserID ? "ok" : "warn",
@@ -333,6 +326,16 @@ export function buildStartChecklist(room: StartChecklistInput): StartChecklist {
       s.streamerUserID ? "" : "可在配置页指定直播员",
     ),
   ];
+
+  if (room.type === "MATCH") {
+    staff.push(startItem(
+      "referee_user_id",
+      "比赛裁判",
+      room.refereeUserID ? "ok" : "error",
+      room.refereeUserID ? `已指定（#${room.refereeUserID}）` : "未指定",
+      room.refereeUserID ? "" : "在配置页指定裁判",
+    ));
+  }
 
   // ---- Group 4: 链接与图池 ----
   const links: StartChecklistItem[] = [

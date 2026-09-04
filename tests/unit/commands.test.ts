@@ -22,6 +22,7 @@ const DOC_NAMES = [
   "ConfirmIRCResultDocument",
   "ConfirmTbResultDocument",
   "GrantAdditionalTimeDocument",
+  "MarkStrategistReadyDocument",
   "PauseTimerDocument",
   "PlacePieceDocument",
   "PlaceShiroDocument",
