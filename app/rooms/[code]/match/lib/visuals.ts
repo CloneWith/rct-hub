@@ -27,13 +27,13 @@ export interface ModPalette {
 }
 
 export const MOD_PALETTES: Record<PieceMod, ModPalette> = {
-  NM: { bg: "#FFEB3B", fg: "#534D1E", zone: "#FFEB3B" },
-  HR: { bg: "#FF5733", fg: "#3B180F", zone: "#FF5733" },
-  HD: { bg: "#FF8D1A", fg: "#472C10", zone: "#FF8D1A" },
-  DT: { bg: "#9D73FF", fg: "#31264F", zone: "#9D73FF" },
-  FM: { bg: "#43CF7C", fg: "#203D27", zone: "#43CF7C" },
-  SHIRO: { bg: "#F5F5F5", fg: "#3A3A3A", zone: "#F5F5F5" },
-  TB: { bg: "#FFA500", fg: "#714800", zone: "#FFA500" },
+  NM: { fg: "#FFEB3B", bg: "#534D1E", zone: "#FFEB3B" },
+  HR: { fg: "#FF5733", bg: "#3B180F", zone: "#FF5733" },
+  HD: { fg: "#FF8D1A", bg: "#472C10", zone: "#FF8D1A" },
+  DT: { fg: "#9D73FF", bg: "#31264F", zone: "#9D73FF" },
+  FM: { fg: "#43CF7C", bg: "#203D27", zone: "#43CF7C" },
+  SHIRO: { fg: "#F5F5F5", bg: "#3A3A3A", zone: "#F5F5F5" },
+  TB: { fg: "#FFA500", bg: "#714800", zone: "#FFA500" },
 };
 
 /** Lucide icon placeholder for each mod (replace with assets later). */
