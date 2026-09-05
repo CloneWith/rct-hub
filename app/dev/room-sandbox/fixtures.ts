@@ -90,8 +90,10 @@ export const FIXTURE_LABELS: Record<FixtureKey, { label: string; description: st
 const FIXTURE_MATCH_ID = "000000000000000000000001";
 const FIXTURE_ROOM_ID = "000000000000000000000002";
 const FIXTURE_CODE = "SANDBOX";
-const FIXTURE_NAME = "Sandbox 对局";
+const FIXTURE_NAME = "测试对局";
 const FIXTURE_MP_LINK = "https://osu.ppy.sh/mp/99999999";
+
+const FIXTURE_BEATMAP_IDS = [2462562, 2215986, 2154609, 2305766, 2176376, 1404850, 1290396];
 
 /** Stable mappool used by every fixture. 11 slots: 3×NM, 1×HD, 1×HR, 1×DT, 1×FM, 1×Shiro, 1×TB, 1×NM(extra). */
 function makeFixturePool() {
@@ -99,45 +101,45 @@ function makeFixturePool() {
     poolSlotID: `pool-${i.toString().padStart(2, "0")}`,
     metadataStatus: "RESOLVED" as BeatmapMetadataStatus,
     beatmap: {
-      onlineID: String(1000000 + i),
-      title: `Sandbox 曲目 ${i}`,
+      onlineID: String(FIXTURE_BEATMAP_IDS[i]),
+      title: `曲目 ${i}`,
       artist: "Sandbox Artist",
       difficultyName: ["Normal", "Hard", "Insane", "Extra"][i % 4],
       starRating: 4 + (i % 6) * 0.3,
       bpm: 160 + (i % 5) * 10,
       totalLength: 120 + (i % 4) * 30,
-      coverUrl: `https://assets.ppy.sh/beatmaps/${1000 + i}/covers/cover.jpg`,
+      coverUrl: `https://assets.ppy.sh/beatmaps/${FIXTURE_BEATMAP_IDS[i]}/covers/cover.jpg`,
     },
   });
   const shiroSlot = {
     poolSlotID: "pool-shiro",
     metadataStatus: "RESOLVED" as BeatmapMetadataStatus,
     beatmap: {
-      onlineID: "1000200",
+      onlineID: "2312925",
       title: "Sandbox Shiro",
       artist: "Sandbox Artist",
       difficultyName: "Shiro",
       starRating: 6.66,
       bpm: 200,
       totalLength: 180,
-      coverUrl: "https://assets.ppy.sh/beatmaps/1200/covers/cover.jpg",
+      coverUrl: "https://assets.ppy.sh/beatmaps/2312925/covers/cover.jpg",
     },
   };
   const tbSlot = {
     poolSlotID: "pool-tb",
     metadataStatus: "RESOLVED" as BeatmapMetadataStatus,
     beatmap: {
-      onlineID: "1000300",
+      onlineID: "2224674",
       title: "Sandbox Tiebreaker",
       artist: "Sandbox Artist",
       difficultyName: "TB",
       starRating: 5.5,
       bpm: 180,
       totalLength: 150,
-      coverUrl: "https://assets.ppy.sh/beatmaps/1300/covers/cover.jpg",
+      coverUrl: "https://assets.ppy.sh/beatmaps/2224674/covers/cover.jpg",
     },
   };
-  return [baseSlot(1), baseSlot(2), baseSlot(3), baseSlot(4), baseSlot(5), baseSlot(6), shiroSlot, tbSlot, baseSlot(7)];
+  return [baseSlot(0), baseSlot(1), baseSlot(2), baseSlot(3), baseSlot(4), baseSlot(5), shiroSlot, tbSlot, baseSlot(6)];
 }
 
 /** Stable roster: 5 players per team (≥4 satisfies match start). */
