@@ -1201,14 +1201,35 @@ export type MatchActorView = {
  * Board screen bootstrap: resolves a formal match by room code (the match
  * code mirrors the room code) and returns identity, pool metadata and an
  * initial snapshot for first paint. The WS channel takes over live updates.
+ *
+ * Field-level errors (e.g. a non-strategist user requesting `strategistView`)
+ * are tolerated: GraphQL partial success returns the match data *alongside*
+ * field-level errors, and the page renders each view as nullable so the
+ * affected panels simply stay empty. We only throw when no match data came
+ * back — that's the genuinely fatal case (unknown room code, transport
+ * failure, auth header missing).
  */
 export function useMatchByCode(code: string, enabled = true) {
   return useQuery({
     queryKey: ["match", code],
     queryFn: async () => {
       const res = await graphqlRequest(MatchByCodeDocument, { code });
-      if (res.errors?.length) throw new Error(res.errors[0].message);
-      return res.data?.matchByCode ?? null;
+      if (!res.data?.matchByCode) {
+        if (res.errors?.length) {
+          throw new Error(res.errors[0].message);
+        }
+        return null;
+      }
+      if (res.errors?.length) {
+        for (const err of res.errors) {
+          console.warn(
+            "[matchByCode] field-level error",
+            err.path?.join(".") ?? "",
+            err.message,
+          );
+        }
+      }
+      return res.data.matchByCode;
     },
     enabled: enabled && Boolean(code),
     retry: 1,
