@@ -23,16 +23,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { MatchByCodeResult } from "@/app/lib/hooks";
 import { useMatchLive } from "../MatchLiveProvider";
-import {
-  banPoolSlot,
-  markStrategistReady,
-  placePiece,
-  placeShiro,
-  requestTb,
-  respondTbRequest,
-  robPiece,
-  CommandTransportError,
-} from "./commands";
+import { CommandTransportError } from "./commands";
 import { cellToPosition } from "./board";
 import { loadSoundEnabled, playEffect } from "./sounds";
 import {
@@ -47,7 +38,7 @@ import StrategistActionBar from "../components/strategist/StrategistActionBar";
 import TBRequestDialog from "../components/strategist/TBRequestDialog";
 
 export function useStrategistInteractions(match: MatchByCodeResult) {
-  const { snapshot, matchId, resync } = useMatchLive();
+  const { snapshot, matchId, resync, commandDispatcher: dispatcher } = useMatchLive();
   const qc = useQueryClient();
   const strategist = match.strategistView;
   const captain = match.captainView;
@@ -68,13 +59,14 @@ export function useStrategistInteractions(match: MatchByCodeResult) {
   const [readyPending, setReadyPending] = useState(false);
   const [readyFeedback, setReadyFeedback] = useState<CommandFeedback | null>(null);
 
-  // --- command hooks
-  const ban = useMatchCommand(banPoolSlot);
-  const place = useMatchCommand(placePiece, { onSuccess: () => setSelectedSlotID(null) });
-  const shiro = useMatchCommand(placeShiro);
-  const rob = useMatchCommand(robPiece, { onSuccess: () => setRobTarget(null) });
-  const tbReq = useMatchCommand(requestTb, { onSuccess: () => setTbOpen(false) });
-  const tbResp = useMatchCommand(respondTbRequest);
+  // --- command hooks (dispatch through the injected dispatcher so the dev
+  //     sandbox can swap in a no-op stub without touching this hook)
+  const ban = useMatchCommand(dispatcher.banPoolSlot);
+  const place = useMatchCommand(dispatcher.placePiece, { onSuccess: () => setSelectedSlotID(null) });
+  const shiro = useMatchCommand(dispatcher.placeShiro);
+  const rob = useMatchCommand(dispatcher.robPiece, { onSuccess: () => setRobTarget(null) });
+  const tbReq = useMatchCommand(dispatcher.requestTb, { onSuccess: () => setTbOpen(false) });
+  const tbResp = useMatchCommand(dispatcher.respondTbRequest);
 
   // Strategy-side readiness is fixed at fetch time; use the bootstrap result,
   // refreshed whenever the bootstrap query is invalidated (e.g. via
@@ -200,7 +192,7 @@ export function useStrategistInteractions(match: MatchByCodeResult) {
     if (readyPending) return;
     setReadyPending(true);
     try {
-      await markStrategistReady({ roomId: match.roomID });
+      await dispatcher.markStrategistReady({ roomId: match.roomID });
       // Server is the source of truth — refetch the bootstrap so the strategist
       // sees the flipped readiness bit and (if both sides are now ready and the
       // room is casual/private) the auto-started lifecycle.
@@ -214,7 +206,7 @@ export function useStrategistInteractions(match: MatchByCodeResult) {
     } finally {
       setReadyPending(false);
     }
-  }, [readyPending, match.roomID, match.code, qc, resync]);
+  }, [readyPending, match.roomID, match.code, qc, resync, dispatcher]);
 
   const clearReadyFeedback = useCallback(() => setReadyFeedback(null), []);
 

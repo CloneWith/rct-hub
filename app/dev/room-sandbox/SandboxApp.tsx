@@ -10,11 +10,11 @@
  * - Show all six canonical phases (PENDING → finished) and every actor
  *   role (observer / red strategist / blue strategist / red captain / blue
  *   captain / referee / admin) so each control surface can be inspected.
- *
- * Not a goal (deferred): clicking ban / pick / place / rob buttons does NOT
- * drive real state transitions — the underlying commands would call into
- * the real GraphQL/REST stack. A follow-up phase will add a mock command
- * layer.
+ * - Wrap the live tree in a `MatchLiveProvider` whose `commandDispatcher`
+ *   is the no-network `sandboxDispatcher`. Every ban/pick/place/rob/etc.
+ *   click is captured by that stub and surfaced through a HeroUI toast
+ *   that names the underlying GraphQL/REST op, so devs can sanity-check
+ *   the args they're sending without spinning up a backend.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -23,6 +23,7 @@ import { Boxes, Eye, Flag, Sword, UserCog, X } from "lucide-react";
 import { Button, Chip } from "@heroui/react";
 import { MatchStageContent, toLiveSnapshot } from "@/app/rooms/[code]/match/MatchStageContent";
 import { MatchLiveProvider } from "@/app/rooms/[code]/match/MatchLiveProvider";
+import { sandboxDispatcher } from "./sandboxDispatcher";
 import {
   buildSandboxMatch,
   FIXTURE_KEYS,
@@ -156,7 +157,7 @@ export default function SandboxApp() {
             DEV · 棋房沙盒
           </Chip>
           <span className="text-xs text-muted-foreground">
-            不打后端，只预览棋房 UI 控件在不同 phase / 角色下的外观。点击控制按钮会真发 GraphQL 请求（沙箱里会失败/打 toast）。
+            不打后端，只预览棋房 UI 控件在不同 phase / 角色下的外观。点击控制按钮会发出 toast，说明实际情况下会触发的后端操作。
           </span>
           <div className="ml-auto">
             <Button
@@ -234,7 +235,9 @@ export default function SandboxApp() {
             snapshot: liveSnapshot,
             lastEvent: null,
             clockOffsetMs: 0,
+            commandDispatcher: sandboxDispatcher,
           }}
+          commandDispatcher={sandboxDispatcher}
         >
           <MatchStageContent match={match} liveSnapshot={liveSnapshot} />
         </MatchLiveProvider>

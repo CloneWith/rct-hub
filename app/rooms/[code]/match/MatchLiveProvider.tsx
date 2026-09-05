@@ -28,6 +28,10 @@ import {
 
 import { useIsClient } from "@/app/lib/hooks";
 import { MatchWsClient, type WsConnectionStatus } from "./lib/ws-client";
+import {
+  realCommandDispatcher,
+  type MatchCommandDispatcher,
+} from "./lib/commandDispatcher";
 import type { WSPublicEvent, WSSnapshot } from "./lib/ws-protocol";
 
 export interface MatchLiveState {
@@ -44,6 +48,13 @@ interface MatchLiveContextValue extends MatchLiveState {
   matchId: string;
   /** Force an immediate resubscribe (e.g. manual retry button). */
   resync: () => void;
+  /**
+   * Command submission layer. Production wiring uses `realCommandDispatcher`
+   * (GraphQL mutations). The dev sandbox swaps this out for a no-op stub
+   * that toasts a description of the backend op instead of actually
+   * dispatching — see `app/dev/room-sandbox/sandboxDispatcher.ts`.
+   */
+  commandDispatcher: MatchCommandDispatcher;
 }
 
 const MatchLiveContext = createContext<MatchLiveContextValue | null>(null);
@@ -56,6 +67,7 @@ export function MatchLiveProvider({
   matchId,
   initialSnapshot,
   staticValue,
+  commandDispatcher,
   children,
 }: {
   matchId: string;
@@ -70,6 +82,13 @@ export function MatchLiveProvider({
    * match id (even though the network call will fail in the sandbox).
    */
   staticValue?: Omit<MatchLiveContextValue, "matchId" | "resync">;
+  /**
+   * Override the command submission layer. Production wiring uses
+   * `realCommandDispatcher` (the default) — the dev sandbox passes a
+   * `sandboxDispatcher` that toasts a description of each backend op
+   * without actually firing it.
+   */
+  commandDispatcher?: MatchCommandDispatcher;
   children: ReactNode;
 }) {
   const isClient = useIsClient();
@@ -141,6 +160,7 @@ export function MatchLiveProvider({
   }, [isClient, matchId, staticValue]);
 
   const value = useMemo<MatchLiveContextValue>(() => {
+    const dispatcher = commandDispatcher ?? realCommandDispatcher;
     if (staticValue) {
       return {
         ...staticValue,
@@ -148,14 +168,16 @@ export function MatchLiveProvider({
         resync: () => {
           /* no-op in sandbox mode */
         },
+        commandDispatcher: staticValue.commandDispatcher ?? dispatcher,
       };
     }
     return {
       matchId,
       ...state,
       resync: () => clientRef.current?.resync(),
+      commandDispatcher: dispatcher,
     };
-  }, [matchId, state, staticValue]);
+  }, [matchId, state, staticValue, commandDispatcher]);
 
   return <MatchLiveContext.Provider value={value}>{children}</MatchLiveContext.Provider>;
 }

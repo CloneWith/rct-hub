@@ -27,30 +27,7 @@ import {
   useIrcObservations,
 } from "@/app/lib/hooks";
 import { useMatchLive } from "../MatchLiveProvider";
-import {
-  abortMatch,
-  calibrateTimer,
-  confirmBeatmapResult,
-  confirmIrcResult,
-  confirmTbResult,
-  grantAdditionalTime,
-  pauseTimer,
-  recordSurrender,
-  refereeBanPoolSlot,
-  refereePlacePiece,
-  refereePlaceShiro,
-  refereeRobPiece,
-  rejectIrcObservation,
-  resumeMatch,
-  resumeTimer,
-  retryIrcJob,
-  retryMatchAutomation,
-  skipCurrentAction,
-  startMatch,
-  startTb,
-  suspendMatch,
-  type ActingTeam,
-} from "./commands";
+import type { ActingTeam } from "./commandDispatcher";
 import { useMatchCommand, type CommandFeedback } from "./useMatchCommands";
 import { channelFromMPLink } from "./channel";
 import RefereeConsole from "../components/referee/RefereeConsole";
@@ -67,7 +44,7 @@ import ResultConfirmationDialog from "../components/referee/ResultConfirmationDi
 const FEEDBACK_TTL_MS = 5000;
 
 export function useRefereeInteractions(match: MatchByCodeResult) {
-  const { snapshot, matchId } = useMatchLive();
+  const { snapshot, matchId, commandDispatcher: dispatcher } = useMatchLive();
   const qc = useQueryClient();
   const referee = match.refereeView;
 
@@ -90,25 +67,26 @@ export function useRefereeInteractions(match: MatchByCodeResult) {
   const [proxyIntent, setProxyIntent] = useState<ProxyIntent | null>(null);
   const [resultOpen, setResultOpen] = useState(false);
 
-  // --- command hooks (one per referee command)
-  const start = useMatchCommand(startMatch);
-  const suspend = useMatchCommand(suspendMatch);
-  const resume = useMatchCommand(resumeMatch);
-  const abort = useMatchCommand(abortMatch);
-  const skip = useMatchCommand(skipCurrentAction);
-  const pause = useMatchCommand(pauseTimer);
-  const resumeT = useMatchCommand(resumeTimer);
-  const calibrate = useMatchCommand(calibrateTimer);
-  const grant = useMatchCommand(grantAdditionalTime);
-  const startTbCmd = useMatchCommand(startTb);
-  const confirmBm = useMatchCommand(confirmBeatmapResult);
-  const confirmTb = useMatchCommand(confirmTbResult);
-  const surrender = useMatchCommand(recordSurrender);
-  const proxyBan = useMatchCommand(refereeBanPoolSlot);
-  const proxyPlace = useMatchCommand(refereePlacePiece);
-  const proxyShiro = useMatchCommand(refereePlaceShiro);
-  const proxyRob = useMatchCommand(refereeRobPiece);
-  const ircConfirm = useMatchCommand(confirmIrcResult, {
+  // --- command hooks (one per referee command; all routed through the
+  //     injected dispatcher so the dev sandbox can swap the whole surface)
+  const start = useMatchCommand(dispatcher.startMatch);
+  const suspend = useMatchCommand(dispatcher.suspendMatch);
+  const resume = useMatchCommand(dispatcher.resumeMatch);
+  const abort = useMatchCommand(dispatcher.abortMatch);
+  const skip = useMatchCommand(dispatcher.skipCurrentAction);
+  const pause = useMatchCommand(dispatcher.pauseTimer);
+  const resumeT = useMatchCommand(dispatcher.resumeTimer);
+  const calibrate = useMatchCommand(dispatcher.calibrateTimer);
+  const grant = useMatchCommand(dispatcher.grantAdditionalTime);
+  const startTbCmd = useMatchCommand(dispatcher.startTb);
+  const confirmBm = useMatchCommand(dispatcher.confirmBeatmapResult);
+  const confirmTb = useMatchCommand(dispatcher.confirmTbResult);
+  const surrender = useMatchCommand(dispatcher.recordSurrender);
+  const proxyBan = useMatchCommand(dispatcher.refereeBanPoolSlot);
+  const proxyPlace = useMatchCommand(dispatcher.refereePlacePiece);
+  const proxyShiro = useMatchCommand(dispatcher.refereePlaceShiro);
+  const proxyRob = useMatchCommand(dispatcher.refereeRobPiece);
+  const ircConfirm = useMatchCommand(dispatcher.confirmIrcResult, {
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["match", matchId, "irc"] }),
   });
@@ -146,7 +124,7 @@ export function useRefereeInteractions(match: MatchByCodeResult) {
           setReasonIntent(null);
           setIrcBusy(true);
           try {
-            await rejectIrcObservation({ matchId, observationId: observation.id, reason });
+            await dispatcher.rejectIrcObservation({ matchId, observationId: observation.id, reason });
             invalidateIrc();
             showIrcFeedback({ kind: "ok", message: "已拒绝该建议" });
           } catch {
@@ -177,7 +155,7 @@ export function useRefereeInteractions(match: MatchByCodeResult) {
     async (job: { id: string }) => {
       setIrcBusy(true);
       try {
-        await retryIrcJob({ matchId, jobId: job.id });
+        await dispatcher.retryIrcJob({ matchId, jobId: job.id });
         invalidateIrc();
         showIrcFeedback({ kind: "ok", message: "已重新发送" });
       } catch {
@@ -193,7 +171,7 @@ export function useRefereeInteractions(match: MatchByCodeResult) {
     async (eventId: string) => {
       setIrcBusy(true);
       try {
-        await retryMatchAutomation({ matchId, eventId });
+        await dispatcher.retryMatchAutomation({ matchId, eventId });
         void qc.invalidateQueries({ queryKey: ["match", match.code] });
         showIrcFeedback({ kind: "ok", message: "已重试自动化任务" });
       } catch {
