@@ -55,16 +55,27 @@ function resolveApiBase(): string {
 export function MatchLiveProvider({
   matchId,
   initialSnapshot,
+  staticValue,
   children,
 }: {
   matchId: string;
   initialSnapshot?: WSSnapshot;
+  /**
+   * If provided, the provider skips the WebSocket client entirely and serves
+   * the supplied context value verbatim. Used by `/dev/room-sandbox` so the
+   * downstream interaction hooks (`useStrategistInteractions` /
+   * `useRefereeInteractions` / `useMatchAnimations`, all of which read
+   * context) keep working without a real WS channel. `matchId` still comes
+   * from props so commands sent against this sandbox resolve to the right
+   * match id (even though the network call will fail in the sandbox).
+   */
+  staticValue?: Omit<MatchLiveContextValue, "matchId" | "resync">;
   children: ReactNode;
 }) {
   const isClient = useIsClient();
   const [state, setState] = useState<MatchLiveState>({
-    status: "connecting",
-    snapshot: initialSnapshot ?? null,
+    status: staticValue ? "live" : "connecting",
+    snapshot: initialSnapshot ?? staticValue?.snapshot ?? null,
     lastEvent: null,
     clockOffsetMs: 0,
   });
@@ -73,6 +84,7 @@ export function MatchLiveProvider({
 
   useEffect(() => {
     if (!isClient || !matchId) return;
+    if (staticValue) return; // sandbox mode: no WS client, snapshot is static
 
     const client = new MatchWsClient({
       apiBase: resolveApiBase(),
@@ -126,16 +138,24 @@ export function MatchLiveProvider({
       clientRef.current = null;
       client.close();
     };
-  }, [isClient, matchId]);
+  }, [isClient, matchId, staticValue]);
 
-  const value = useMemo<MatchLiveContextValue>(
-    () => ({
+  const value = useMemo<MatchLiveContextValue>(() => {
+    if (staticValue) {
+      return {
+        ...staticValue,
+        matchId,
+        resync: () => {
+          /* no-op in sandbox mode */
+        },
+      };
+    }
+    return {
       matchId,
       ...state,
       resync: () => clientRef.current?.resync(),
-    }),
-    [matchId, state],
-  );
+    };
+  }, [matchId, state, staticValue]);
 
   return <MatchLiveContext.Provider value={value}>{children}</MatchLiveContext.Provider>;
 }
