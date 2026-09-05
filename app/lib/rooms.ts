@@ -178,7 +178,7 @@ export interface StartChecklistItem {
   field: string;
   label: string;
   status: StartCheckStatus;
-  /** Current value summary, e.g. "Seed Red · 8 名玩家" or "未设置". */
+  /** Current value summary, e.g. "Seed Red · 6 名玩家" or "未设置". */
   detail: string;
   /** Fix suggestion shown when the item is not ok. */
   hint: string;
@@ -261,9 +261,11 @@ function linkedTeamItem(side: string, team: TeamSummary | null): StartChecklistI
  * - `service.MissingStartRequirements`: casual/match need both teams ready,
  *   BP order, a scheduled time and an assigned referee (D3 hard rules);
  *   match additionally needs a mappool and a non-empty MP link.
- * - `matchengine.NewReadyState`: every formal match requires exactly 8
- *   players per team, unique across teams, leaders inside their roster, and
- *   exactly one Shiro + one TB pool slot.
+ * - `matchengine.NewReadyState`: every formal match requires a non-empty
+ *   roster containing the leader, no duplicate player ids across teams, and
+ *   exactly one Shiro + one TB pool slot. Roster size is intentionally not
+ *   enforced — a team with only its leader (and optionally the leader's
+ *   strategist) may still start.
  *
  * The streamer stays optional (soft warning only, D3).
  */
@@ -291,25 +293,6 @@ export function buildStartChecklist(room: StartChecklistInput): StartChecklist {
   if (isMatch) {
     const redPlayers = s.redTeam?.playerIDs ?? [];
     const bluePlayers = s.blueTeam?.playerIDs ?? [];
-    const redLeader = s.redTeam?.leaderID ?? null;
-    const blueLeader = s.blueTeam?.leaderID ?? null;
-
-    if (redPlayers.length !== 8) {
-      teams.push(
-        startItem("settings.red_team_id", "红方人数", "error", `${redPlayers.length}/8`, "正式赛每队需恰好 8 名选手"),
-      );
-    }
-    if (bluePlayers.length !== 8) {
-      teams.push(
-        startItem("settings.blue_team_id", "蓝方人数", "error", `${bluePlayers.length}/8`, "正式赛每队需恰好 8 名选手"),
-      );
-    }
-    if (redLeader != null && !redPlayers.includes(redLeader)) {
-      teams.push(startItem("settings.red_team_id", "红方队长", "error", "不在阵容中", "调整队伍使队长属于名单"));
-    }
-    if (blueLeader != null && !bluePlayers.includes(blueLeader)) {
-      teams.push(startItem("settings.blue_team_id", "蓝方队长", "error", "不在阵容中", "调整队伍使队长属于名单"));
-    }
     const allPlayers = [...redPlayers, ...bluePlayers];
     if (new Set(allPlayers).size !== allPlayers.length) {
       teams.push(startItem("settings.players", "双方名单", "error", "存在重复的 osu! ID", "调整队伍使双方选手不重复"));
