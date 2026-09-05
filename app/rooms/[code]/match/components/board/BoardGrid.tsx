@@ -18,15 +18,15 @@ import { zoneStyle } from "../../lib/visuals";
 import ChessPiece from "./ChessPiece";
 
 export default function BoardGrid({
-  board,
-  children,
-  highlightedCells,
-  robTargetIDs,
-  placedPieces,
-  wonPieces,
-  robbedPieces,
-  onCellClick,
-}: {
+                                    board,
+                                    children,
+                                    highlightedCells,
+                                    robTargetIDs,
+                                    placedPieces,
+                                    wonPieces,
+                                    robbedPieces,
+                                    onCellClick,
+                                  }: {
   board: WSBoard | null;
   children?: React.ReactNode;
   /** Legal drop cells (from analysis.legalPlacements / shiroCells). */
@@ -41,11 +41,12 @@ export default function BoardGrid({
 }) {
   // Cells are delivered row-major (A1..D4); a 4-column grid reproduces the
   // physical layout without local coordinate math.
-  const cells = board?.cells ?? Array.from({ length: 16 });
+  const cells = board?.cells ?? Array.from({length: 16});
 
   return (
-    <div className="relative aspect-square w-full max-w-[560px] select-none">
-      <div className="grid h-full w-full grid-cols-4 grid-rows-4 gap-1.5 rounded-xl border border-border bg-black/20 p-1.5">
+    <div className="relative aspect-square w-full max-w-140 select-none">
+      <div
+        className="grid h-full w-full grid-cols-4 grid-rows-4 gap-1.5 rounded-xl border border-border bg-black/20 p-1.5">
         {cells.map((cell, i) => {
           const zone = cell?.zone;
           const highlighted = Boolean(cell && highlightedCells?.has(cell.cell));
@@ -87,7 +88,7 @@ export default function BoardGrid({
               </span>
               {piece && (
                 <div className={`h-[72%] w-[72%] ${animClass}`}>
-                  <ChessPiece piece={piece} />
+                  <ChessPiece piece={piece}/>
                 </div>
               )}
             </div>

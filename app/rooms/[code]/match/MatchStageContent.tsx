@@ -58,6 +58,28 @@ function matchStatusText(
 
 /** Project a backend bootstrap snapshot into the WS projection shape. */
 export function toLiveSnapshot(source: BootstrapMatch["snapshot"]): WSSnapshot {
+  // Compute per-mod 1-based indexes (NM1, NM2, ...) mirroring the admin preview.
+  const indexBySlotId = new Map<string, number>();
+  const sortedSlots = [...source.poolSlots].sort((a, b) => {
+    const modOrder = a.mod.localeCompare(b.mod);
+    if (modOrder !== 0) return modOrder;
+    return a.id.localeCompare(b.id, undefined, { numeric: true });
+  });
+  const counters = new Map<string, number>();
+  for (const slot of sortedSlots) {
+    const next = (counters.get(slot.mod) ?? 0) + 1;
+    counters.set(slot.mod, next);
+    indexBySlotId.set(slot.id, next);
+  }
+
+  const poolSlots = source.poolSlots.map((slot) => ({
+    id: slot.id,
+    mod: slot.mod as WSSnapshot["poolSlots"][number]["mod"],
+    state: slot.state as WSSnapshot["poolSlots"][number]["state"],
+    index: indexBySlotId.get(slot.id) ?? 0,
+  }));
+  const poolSlotIndexById = new Map(poolSlots.map((s) => [s.id, s.index]));
+
   return {
     version: Number(source.version),
     lifecycle: source.lifecycle as WSSnapshot["lifecycle"],
@@ -66,11 +88,7 @@ export function toLiveSnapshot(source: BootstrapMatch["snapshot"]): WSSnapshot {
     firstPick: source.firstPick as WSSnapshot["firstPick"],
     turn: source.turn,
     activeTeam: source.activeTeam ?? undefined,
-    poolSlots: source.poolSlots.map((slot) => ({
-      id: slot.id,
-      mod: slot.mod as WSSnapshot["poolSlots"][number]["mod"],
-      state: slot.state as WSSnapshot["poolSlots"][number]["state"],
-    })),
+    poolSlots,
     board: {
       cells: source.board.cells.map((cell) => ({
         cell: cell.cell,
@@ -88,6 +106,7 @@ export function toLiveSnapshot(source: BootstrapMatch["snapshot"]): WSSnapshot {
               outcome: cell.piece.outcome as NonNullable<
                 WSSnapshot["board"]["cells"][number]["piece"]
               >["outcome"],
+              index: poolSlotIndexById.get(cell.piece.sourcePoolSlotID) ?? 0,
             }
           : undefined,
       })),

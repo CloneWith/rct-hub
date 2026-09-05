@@ -96,6 +96,8 @@ export interface WSPoolSlot {
   id: string;
   mod: PieceMod;
   state: PoolSlotState;
+  /** 1-based index within the same mod group (e.g. NM1, NM2). */
+  index: number;
 }
 
 export interface WSBoardPiece {
@@ -106,6 +108,8 @@ export interface WSBoardPiece {
   selectedBy: TeamSide;
   owner?: TeamSide;
   outcome: BoardPieceOutcome;
+  /** Optional display index (1-based pool slot number). Back-end does not send it yet; front-end can synthesize for fixtures. */
+  index?: number;
 }
 
 export interface WSBoardCell {

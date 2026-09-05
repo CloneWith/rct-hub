@@ -202,7 +202,7 @@ function SlotCard({
             </div>
           ) : (
             <div className="-rotate-12 scale-110 text-white drop-shadow">
-              <Trophy className="size-10" strokeWidth={2.5}/>
+              <Trophy className="size-10" strokeWidth={2}/>
             </div>
           )}
         </div>
@@ -225,7 +225,7 @@ function SlotCard({
                 "0 1px 0 rgba(0,0,0,0.35), 1px 0 0 rgba(0,0,0,0.35), 0 -1px 0 rgba(0,0,0,0.35), -1px 0 0 rgba(0,0,0,0.35)",
             }}
           >
-            {slot.id}
+            {slot.index}
           </span>
         </div>
 

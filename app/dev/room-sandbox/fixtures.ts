@@ -626,10 +626,20 @@ function buildActorViews(
  * role. The returned object is consumed verbatim by `MatchStageContent` —
  * no GraphQL, no WS.
  */
+function addSlotIndexes(slots: BootstrapMatch["snapshot"]["poolSlots"]): BootstrapMatch["snapshot"]["poolSlots"] {
+  const counters = new Map<string, number>();
+  return slots.map((s) => {
+    const next = (counters.get(s.mod) ?? 0) + 1;
+    counters.set(s.mod, next);
+    return {...s, index: next};
+  });
+}
+
 export function buildSandboxMatch(fixtureKey: FixtureKey, role: ViewerRole): BootstrapMatch {
   const meta = FIXTURE_META[fixtureKey];
   const pool = makeFixturePool();
   const actorViews = buildActorViews(fixtureKey, role);
+  const snapshot = FIXTURE_SNAPSHOTS[fixtureKey];
 
   return {
     id: FIXTURE_MATCH_ID,
@@ -646,7 +656,7 @@ export function buildSandboxMatch(fixtureKey: FixtureKey, role: ViewerRole): Boo
       settings: { mpLink: FIXTURE_MP_LINK },
     },
     pool,
-    snapshot: FIXTURE_SNAPSHOTS[fixtureKey],
+    snapshot: {...snapshot, poolSlots: addSlotIndexes(snapshot.poolSlots)},
     strategistView: actorViews.strategistView,
     captainView: actorViews.captainView,
     refereeView: actorViews.refereeView,
