@@ -280,6 +280,8 @@ export function MatchStageContent({
                 selectableSlotIDs={interactions.poolProps.selectableSlotIDs}
                 selectedSlotID={interactions.poolProps.selectedSlotID}
                 onSelectSlot={interactions.poolProps.onSelectSlot}
+                phase={snapshot?.phase ?? null}
+                board={snapshot?.board ?? null}
               />
             </MatchSectionErrorBoundary>
           </aside>
