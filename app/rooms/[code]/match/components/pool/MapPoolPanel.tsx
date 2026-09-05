@@ -85,7 +85,7 @@ function teamGradientStyle(team?: TeamSide): React.CSSProperties {
   if (!team) return {};
   const color = TEAM_COLORS[team];
   return {
-    background: `linear-gradient(to 40, ${color}e6 50%, ${color}80 75%, transparent 100%)`,
+    background: `linear-gradient(to right, transparent 40%, ${color}80 70%, ${color}e6 80%)`,
   };
 }
 
