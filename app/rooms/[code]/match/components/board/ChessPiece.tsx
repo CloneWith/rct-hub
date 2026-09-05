@@ -1,103 +1,109 @@
 "use client";
 
 /**
- * ChessPiece — SVG round piece (D6: SVG redraw; PNG swappable later via the
- * same component).
+ * ChessPiece — redesigned round board piece.
  *
- * Migrated visual language from the legacy `FumoChessPiece`: a round disc
- * with a subtle radial sheen, an inner status ring and a small MOD tick mark.
- * Visual states are driven by the authoritative snapshot (`outcome` + owner):
- * - WAITING_RESULT: breathing glow ring
- * - WON: owner-colored ring + glow
- * - DEAD: desaturated + diagonal slash
- * - WHITE: neutral white ring
+ * Layers (bottom → top):
+ * 1. Mod-colored body background.
+ * 2. Repeating translucent triangle pattern placeholder (will be replaced by
+ *    custom mod assets later).
+ * 3. Centered mod icon + bottom-right index text. Default white; on WON the
+ *    foreground is tinted by the owning team's color.
+ * 4. White outer rim + outer drop shadow + inner shadow.
+ * 5. For DEAD pieces: a dark overlay with an X mark (captured / consumed).
+ *
+ * Special states:
+ * - WAITING_RESULT: white icon/index, subtle breathing ring.
+ * - WON: team-colored icon/index.
+ * - WHITE (Shiro): no icon/index, pale background.
+ * - DEAD: dark mask + X.
  */
 
-import { DEAD_PIECE, MOD_LABELS, MOD_PALETTES, effectiveMod, TEAM_COLORS } from "../../lib/visuals";
-import type { TeamSide, WSBoardPiece } from "../../lib/ws-protocol";
+import { X } from "lucide-react";
+import { MOD_ICON_CONFIG, MOD_PALETTES, TEAM_COLORS } from "../../lib/visuals";
+import type { WSBoardPiece } from "../../lib/ws-protocol";
 
-export default function ChessPiece({ piece }: { piece: WSBoardPiece }) {
-  const mod = effectiveMod(piece.mod, piece.forceMod);
+interface ChessPieceProps {
+  piece: WSBoardPiece;
+}
+
+/** Procedural triangle pattern used as a placeholder texture inside pieces. */
+const TRIANGLE_PATTERN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M0 38 L10 14 L20 38 Z' fill='%23000' fill-opacity='0.06'/%3E%3Cpath d='M22 24 L32 2 L40 22 Z' fill='%23fff' fill-opacity='0.08'/%3E%3Cpath d='M14 0 L24 18 L34 0 Z' fill='%23000' fill-opacity='0.04'/%3E%3C/svg%3E")`;
+
+export default function ChessPiece({ piece }: ChessPieceProps) {
+  const { icon: ModIcon, label } = MOD_ICON_CONFIG[piece.mod];
+  const palette = MOD_PALETTES[piece.mod];
+
+  const won = piece.outcome === "WON";
+  const waiting = piece.outcome === "WAITING_RESULT";
   const dead = piece.outcome === "DEAD";
-  const palette = dead ? DEAD_PIECE : MOD_PALETTES[mod];
+  const white = piece.outcome === "WHITE";
 
-  const owner = piece.owner as TeamSide | undefined;
-  const ownerColor =
-    piece.outcome === "WON" && owner ? TEAM_COLORS[owner] : piece.outcome === "WHITE" ? "#FFFFFF" : undefined;
+  const ownerColor = won && piece.owner ? TEAM_COLORS[piece.owner] : undefined;
+  const foregroundColor = ownerColor ?? "#FFFFFF";
 
-  const showForceBadge = piece.mod === "FM" && piece.forceMod;
-  const label = MOD_LABELS[mod];
-
-  // Small tick mark under the label — subtle nod to the legacy texture.
-  const tickHue = dead ? "#9a9a9a" : palette.fg;
+  const isBlank = white || dead;
+  const showIcon = !isBlank;
+  const showIndex = !isBlank && piece.index != null;
 
   return (
     <div
-      className={`relative h-full w-full select-none ${piece.outcome === "WAITING_RESULT" ? "piece-breathing" : ""}`}
-      title={`${MOD_LABELS[piece.mod]}${showForceBadge ? ` (FM→${piece.forceMod})` : ""} · ${piece.outcome}`}
+      className={`relative aspect-square h-full w-full select-none rounded-full ${waiting ? "piece-breathing" : ""}`}
+      title={`${label}${piece.forceMod ? `→${piece.forceMod}` : ""} · ${piece.outcome}${piece.owner ? ` · ${piece.owner}` : ""}`}
     >
-      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
-        <defs>
-          {/* One gradient per mod — identical content, deduplicated visually
-              by the browser (first instance wins). */}
-          <radialGradient id={`rcth-sheen-${mod}`} cx="0.35" cy="0.3" r="0.9">
-            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.55" />
-            <stop offset="38%" stopColor="#FFFFFF" stopOpacity="0.12" />
-            <stop offset="100%" stopColor="#000000" stopOpacity="0.22" />
-          </radialGradient>
-        </defs>
-
-        {/* Disc body */}
-        <circle cx="32" cy="32" r="29" fill={palette.bg} stroke={ownerColor ?? "rgba(0,0,0,0.45)"} strokeWidth="2.5" />
-        <circle cx="32" cy="32" r="29" fill={`url(#rcth-sheen-${mod})`} />
-
-        {/* Inner status ring */}
-        <circle
-          cx="32"
-          cy="32"
-          r="22.5"
-          fill="none"
-          stroke={ownerColor ?? "rgba(0,0,0,0.22)"}
-          strokeWidth="1.5"
-          strokeDasharray="2.5 3"
-          opacity="0.85"
-        />
-
-        {/* MOD label */}
-        <text
-          x="32"
-          y="39.5"
-          textAnchor="middle"
-          fontSize={label.length > 3 ? "15" : "19"}
-          fontWeight="800"
-          fill={palette.fg}
-          style={{ fontFamily: "var(--font-sans)" }}
-        >
-          {label}
-        </text>
-
-        {/* Small tick under the label */}
-        <path d="M24 47 L32 43.5 L40 47 L40.6 49 L32 46.2 L23.4 49 Z" fill={tickHue} opacity="0.5" />
-
-        {/* WON glow ring */}
-        {ownerColor && (
-          <circle cx="32" cy="32" r="29" fill="none" stroke={ownerColor} strokeWidth="3.5" opacity="0.9">
-            <animate attributeName="r" values="29;31;29" dur="1.6s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.9;0.45;0.9" dur="1.6s" repeatCount="indefinite" />
-          </circle>
+      {/* Outer frame + drop shadow + inner shadow */}
+      <div
+        className="relative h-full w-full overflow-hidden rounded-full border-[3px] border-white"
+        style={{
+          backgroundColor: white ? "#F5F5F5" : palette.bg,
+          boxShadow: `
+            0 4px 8px rgba(0, 0, 0, 0.35),
+            inset 0 2px 6px rgba(0, 0, 0, 0.22),
+            inset 0 -2px 4px rgba(0, 0, 0, 0.12)
+          `,
+        }}
+      >
+        {/* Triangle texture placeholder */}
+        {!white && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 opacity-60"
+            style={{ backgroundImage: TRIANGLE_PATTERN, backgroundSize: "40px 40px" }}
+          />
         )}
 
-        {/* Dead slash */}
+        {/* Mod icon */}
+        {showIcon && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <ModIcon
+              className="h-[52%] w-[52%]"
+              strokeWidth={2.2}
+              style={{ color: foregroundColor }}
+              aria-hidden
+            />
+          </div>
+        )}
+
+        {/* Pool slot index */}
+        {showIndex && (
+          <span
+            className="absolute bottom-[12%] right-[14%] text-[0.75rem] font-extrabold leading-none"
+            style={{
+              color: foregroundColor,
+              textShadow: "0 1px 2px rgba(0,0,0,0.35)",
+            }}
+          >
+            {piece.index}
+          </span>
+        )}
+
+        {/* Dead overlay */}
         {dead && (
-          <line x1="12" y1="52" x2="52" y2="12" stroke="rgba(0,0,0,0.6)" strokeWidth="5" strokeLinecap="round" />
+          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60">
+            <X className="h-[45%] w-[45%] text-white/80" strokeWidth={3} aria-hidden />
+          </div>
         )}
-      </svg>
-
-      {showForceBadge && (
-        <span className="absolute bottom-0 right-0 rounded bg-black/55 px-1 text-[0.55rem] font-bold text-white">
-          FM
-        </span>
-      )}
+      </div>
     </div>
   );
 }
