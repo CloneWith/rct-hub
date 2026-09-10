@@ -1,0 +1,39 @@
+# Local artifacts
+.git
+.idea
+.vscode
+.workbuddy
+.agents
+.github
+README.md
+AGENTS.md
+*.mdx
+content/private/
+
+# Build artifacts
+.next/
+out/
+dist/
+build/
+coverage/
+.turbo/
+*.tsbuildinfo
+.tsbuildinfo
+.vercel
+.vscode-test
+
+# Env files (build-time env should come from --build-arg / CI secrets)
+.env
+.env.*
+!.env.example
+
+# Node / pnpm
+node_modules/
+.pnpm-store/
+*.log
+*.lock
+!pnpm-lock.yaml
+
+# Tests
+tests/**/coverage
+tests/**/__snapshots__/*.snap.local

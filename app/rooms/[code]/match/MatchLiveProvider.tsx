@@ -28,6 +28,10 @@ import {
 
 import { useIsClient } from "@/app/lib/hooks";
 import { MatchWsClient, type WsConnectionStatus } from "./lib/ws-client";
+import {
+  realCommandDispatcher,
+  type MatchCommandDispatcher,
+} from "./lib/commandDispatcher";
 import type { WSPublicEvent, WSSnapshot } from "./lib/ws-protocol";
 
 export interface MatchLiveState {
@@ -44,6 +48,13 @@ interface MatchLiveContextValue extends MatchLiveState {
   matchId: string;
   /** Force an immediate resubscribe (e.g. manual retry button). */
   resync: () => void;
+  /**
+   * Command submission layer. Production wiring uses `realCommandDispatcher`
+   * (GraphQL mutations). The dev sandbox swaps this out for a no-op stub
+   * that toasts a description of the backend op instead of actually
+   * dispatching — see `app/dev/room-sandbox/sandboxDispatcher.ts`.
+   */
+  commandDispatcher: MatchCommandDispatcher;
 }
 
 const MatchLiveContext = createContext<MatchLiveContextValue | null>(null);
@@ -55,16 +66,35 @@ function resolveApiBase(): string {
 export function MatchLiveProvider({
   matchId,
   initialSnapshot,
+  staticValue,
+  commandDispatcher,
   children,
 }: {
   matchId: string;
   initialSnapshot?: WSSnapshot;
+  /**
+   * If provided, the provider skips the WebSocket client entirely and serves
+   * the supplied context value verbatim. Used by `/dev/room-sandbox` so the
+   * downstream interaction hooks (`useStrategistInteractions` /
+   * `useRefereeInteractions` / `useMatchAnimations`, all of which read
+   * context) keep working without a real WS channel. `matchId` still comes
+   * from props so commands sent against this sandbox resolve to the right
+   * match id (even though the network call will fail in the sandbox).
+   */
+  staticValue?: Omit<MatchLiveContextValue, "matchId" | "resync">;
+  /**
+   * Override the command submission layer. Production wiring uses
+   * `realCommandDispatcher` (the default) — the dev sandbox passes a
+   * `sandboxDispatcher` that toasts a description of each backend op
+   * without actually firing it.
+   */
+  commandDispatcher?: MatchCommandDispatcher;
   children: ReactNode;
 }) {
   const isClient = useIsClient();
   const [state, setState] = useState<MatchLiveState>({
-    status: "connecting",
-    snapshot: initialSnapshot ?? null,
+    status: staticValue ? "live" : "connecting",
+    snapshot: initialSnapshot ?? staticValue?.snapshot ?? null,
     lastEvent: null,
     clockOffsetMs: 0,
   });
@@ -73,6 +103,7 @@ export function MatchLiveProvider({
 
   useEffect(() => {
     if (!isClient || !matchId) return;
+    if (staticValue) return; // sandbox mode: no WS client, snapshot is static
 
     const client = new MatchWsClient({
       apiBase: resolveApiBase(),
@@ -126,16 +157,27 @@ export function MatchLiveProvider({
       clientRef.current = null;
       client.close();
     };
-  }, [isClient, matchId]);
+  }, [isClient, matchId, staticValue]);
 
-  const value = useMemo<MatchLiveContextValue>(
-    () => ({
+  const value = useMemo<MatchLiveContextValue>(() => {
+    const dispatcher = commandDispatcher ?? realCommandDispatcher;
+    if (staticValue) {
+      return {
+        ...staticValue,
+        matchId,
+        resync: () => {
+          /* no-op in sandbox mode */
+        },
+        commandDispatcher: staticValue.commandDispatcher ?? dispatcher,
+      };
+    }
+    return {
       matchId,
       ...state,
       resync: () => clientRef.current?.resync(),
-    }),
-    [matchId, state],
-  );
+      commandDispatcher: dispatcher,
+    };
+  }, [matchId, state, staticValue, commandDispatcher]);
 
   return <MatchLiveContext.Provider value={value}>{children}</MatchLiveContext.Provider>;
 }

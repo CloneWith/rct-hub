@@ -14,6 +14,8 @@ import type {
   PieceMod,
   TeamSide,
 } from "./ws-protocol";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
+import { LucideProps, Circle, Eye, Swords, Zap, Shuffle, Star, Target } from "lucide-react";
 
 export interface ModPalette {
   /** Piece / slot background. */
@@ -25,13 +27,32 @@ export interface ModPalette {
 }
 
 export const MOD_PALETTES: Record<PieceMod, ModPalette> = {
-  NM: { bg: "#FFEB3B", fg: "#534D1E", zone: "#FFEB3B" },
-  HR: { bg: "#FF5733", fg: "#3B180F", zone: "#FF5733" },
-  HD: { bg: "#FF8D1A", fg: "#472C10", zone: "#FF8D1A" },
-  DT: { bg: "#9D73FF", fg: "#31264F", zone: "#9D73FF" },
-  FM: { bg: "#43CF7C", fg: "#203D27", zone: "#43CF7C" },
-  SHIRO: { bg: "#F5F5F5", fg: "#3A3A3A", zone: "#F5F5F5" },
-  TB: { bg: "#FFA500", fg: "#714800", zone: "#FFA500" },
+  NM: { fg: "#FFEB3B", bg: "#534D1E", zone: "#FFEB3B" },
+  HR: { fg: "#FF5733", bg: "#3B180F", zone: "#FF5733" },
+  HD: { fg: "#FF8D1A", bg: "#472C10", zone: "#FF8D1A" },
+  DT: { fg: "#9D73FF", bg: "#31264F", zone: "#9D73FF" },
+  FM: { fg: "#43CF7C", bg: "#203D27", zone: "#43CF7C" },
+  SHIRO: { fg: "#F5F5F5", bg: "#3A3A3A", zone: "#F5F5F5" },
+  TB: { fg: "#FFA500", bg: "#714800", zone: "#FFA500" },
+};
+
+/** Lucide icon placeholder for each mod (replace with assets later). */
+export interface ModIconConfig {
+  icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
+  label: string;
+  /** Foreground color from {@link MOD_PALETTES}. */
+  color: string;
+}
+
+// TODO: Change icons to customized ones
+export const MOD_ICON_CONFIG: Record<PieceMod, ModIconConfig> = {
+  NM: { icon: Circle, label: "NM", color: MOD_PALETTES.NM.fg },
+  HD: { icon: Eye, label: "HD", color: MOD_PALETTES.HD.fg },
+  HR: { icon: Swords, label: "HR", color: MOD_PALETTES.HR.fg },
+  DT: { icon: Zap, label: "DT", color: MOD_PALETTES.DT.fg },
+  FM: { icon: Shuffle, label: "FM", color: MOD_PALETTES.FM.fg },
+  SHIRO: { icon: Star, label: "Shiro", color: MOD_PALETTES.SHIRO.fg },
+  TB: { icon: Target, label: "TB", color: MOD_PALETTES.TB.fg },
 };
 
 /** Dead (captured) pieces render desaturated grey. */
