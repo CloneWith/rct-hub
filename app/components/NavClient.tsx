@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -39,7 +39,48 @@ const mobileClass = (active: boolean) =>
  * 导航主体（client）：静态链接高亮 + 移动菜单开关。
  * 只依赖 Link/usePathname/lucide —— 重量依赖（HeroUI、AuthContext）
  * 通过 props 注入的 UserMenu / UserMenuMobile 隔离，静态页不再被拖累。
+ *
+ * `usePathname` 是未缓存动态数据：动态路由（如 /rooms/[code]/match）在
+ * 预渲染时必须位于 <Suspense> 边界内，否则整个路由的静态外壳被阻塞。
+ * 预渲染兜底渲染无高亮态的链接列表（仅 class 不同，结构一致）。
  */
+
+type NavVariant = "desktop" | "mobile";
+
+function NavLinks({
+  variant,
+  pathname,
+  onNavigate,
+}: {
+  variant: NavVariant;
+  /** null = 预渲染兜底（无高亮态）。 */
+  pathname: string | null;
+  onNavigate?: () => void;
+}) {
+  const cls = variant === "desktop" ? desktopClass : mobileClass;
+  const isActive = (href: string) => pathname === href;
+  return (
+    <>
+      {navLinks.map(({ href, label, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          onClick={onNavigate}
+          className={cls(isActive(href))}
+        >
+          <Icon className={variant === "desktop" ? "w-4 h-4" : "w-5 h-5"} />
+          {label}
+        </Link>
+      ))}
+    </>
+  );
+}
+
+function ActiveNavLinks(props: { variant: NavVariant; onNavigate?: () => void }) {
+  const pathname = usePathname();
+  return <NavLinks {...props} pathname={pathname} />;
+}
+
 export function NavClient({
   children,
   actions,
@@ -52,10 +93,7 @@ export function NavClient({
   /** 移动菜单底部的用户操作（UserMenuMobile） */
   mobileFooter?: ReactNode;
 }) {
-  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const isActive = (href: string) => pathname === href;
 
   return (
     <>
@@ -64,12 +102,9 @@ export function NavClient({
 
         {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-1">
-          {navLinks.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href} className={desktopClass(isActive(href))}>
-              <Icon className="w-4 h-4" />
-              {label}
-            </Link>
-          ))}
+          <Suspense fallback={<NavLinks variant="desktop" pathname={null} />}>
+            <ActiveNavLinks variant="desktop" />
+          </Suspense>
         </div>
 
         {/* Right side */}
@@ -93,17 +128,12 @@ export function NavClient({
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-md">
           <div className="px-4 py-3 flex flex-col gap-1">
-            {navLinks.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setMobileOpen(false)}
-                className={mobileClass(isActive(href))}
-              >
-                <Icon className="w-5 h-5" />
-                {label}
-              </Link>
-            ))}
+            <Suspense fallback={<NavLinks variant="mobile" pathname={null} />}>
+              <ActiveNavLinks
+                variant="mobile"
+                onNavigate={() => setMobileOpen(false)}
+              />
+            </Suspense>
             {mobileFooter}
           </div>
         </div>

@@ -18,6 +18,7 @@ import {
   type RoomMetadataInput,
   type RestResponse,
   type GraphQLResponse,
+  type BulkReport,
 } from "./api";
 import { revalidateAnnouncements } from "./revalidate";
 import {
@@ -25,8 +26,16 @@ import {
   UsersDocument,
   BeatmapsDocument,
   BeatmapByOsuIdDocument,
+  TeamsDocument,
+  MappoolsDocument,
+  UserByOsuIdDocument,
   AnnouncementsDocument,
   RoomsDocument,
+  RoomByCodeDocument,
+  MatchByCodeDocument,
+  IrcConnectionStatusDocument,
+  IrcObservationsDocument,
+  IrcJobsDocument,
 } from "@/app/lib/operations";
 import { toast } from "@heroui/react";
 import type {
@@ -34,8 +43,12 @@ import type {
   UsersQuery,
   BeatmapsQuery,
   BeatmapByOsuIdQuery,
+  TeamsQuery,
+  MappoolsQuery,
+  UserByOsuIdQuery,
   AnnouncementsQuery,
   RoomsQuery,
+  RoomByCodeQuery,
 } from "@/app/graphql/graphql";
 import type { UserRole, VerifyStatus, MatchLifecycle, RoomType } from "@/app/graphql/graphql";
 
@@ -54,6 +67,18 @@ export type BeatmapItem = BeatmapsQuery["beatmaps"]["items"][number];
 
 /** Announcement list item (from `AnnouncementsQuery`). */
 export type AnnouncementItem = AnnouncementsQuery["announcements"]["items"][number];
+
+/** Team list item (from `TeamsQuery`). */
+export type TeamItem = TeamsQuery["teams"]["items"][number];
+
+/** Mappool list item (from `MappoolsQuery`). */
+export type MappoolItem = MappoolsQuery["mappools"]["items"][number];
+
+/** Mappool entry inside a `MappoolItem`. */
+export type MappoolEntryItem = NonNullable<MappoolItem["entries"][number]>;
+
+/** User fetched through `userByOsuId` (fetch-through upsert, D4). */
+export type FetchedUser = NonNullable<UserByOsuIdQuery["userByOsuId"]>;
 
 /** Generic paginated result — matches the GraphQL `*Page` shape. */
 export interface PagedResult<T> {
@@ -75,7 +100,16 @@ function unwrap<T>(res: { data?: T; errors?: Array<{ message: string }> }): T {
 }
 
 function throwOnRestError<T>(res: RestResponse<T>): T {
-  if (!res.success) throw new Error(res.error ?? "Request failed");
+  if (!res.success) {
+    // Merge field-level validation details (e.g. start-match missing
+    // requirements) into the message so the toast maps the failure to the
+    // concrete fields instead of a generic "invalid input".
+    const detailText = (res.details ?? [])
+      .map((d) => d.message)
+      .filter((m): m is string => !!m)
+      .join("；");
+    throw new Error(detailText ? `${res.error ?? "Request failed"}：${detailText}` : (res.error ?? "Request failed"));
+  }
   return res.data as T;
 }
 
@@ -220,10 +254,10 @@ export function useMe() {
 // Admin — Users
 // =========================================================================
 
-export function useUsers(enabled = true, page = 1, perPage = 20) {
+export function useUsers(enabled = true, page = 1, perPage = 20, search = "") {
   const { data, isLoading } = useGraphQLPaged(
-    ["admin", "users", page, perPage],
-    () => graphqlRequest(UsersDocument, { page, perPage }),
+    ["admin", "users", page, perPage, search],
+    () => graphqlRequest(UsersDocument, { page, perPage, search: search || undefined }),
     (data) => data.users,
     enabled,
   );
@@ -234,6 +268,28 @@ export function useUsers(enabled = true, page = 1, perPage = 20) {
       : null,
     isLoading,
   };
+}
+
+/**
+ * Search users by keyword or osu! id for autocomplete dropdowns. Pure read
+ * (backend `svc.List` → Mongo), safe for per-keystroke debounced queries.
+ */
+export function useUserSearch(query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["search", "users", query],
+    queryFn: async () => {
+      const res = await graphqlRequest(UsersDocument, {
+        search: query || undefined,
+        page: 1,
+        perPage: 20,
+      });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.users.items ?? [];
+    },
+    enabled: enabled && query.trim().length >= 1,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
 }
 
 export function useUpdateUserRoles() {
@@ -331,6 +387,24 @@ export function useUpdateVerifyStatus() {
   });
 }
 
+/**
+ * Bulk-add users by osu! id. The backend fetches each id through the 3-tier
+ * fetcher (Redis → Mongo → osu! API) and returns a per-id report. Partial
+ * success is preserved — a few bad ids do not roll back the good ones.
+ * Returns the `BulkReport` so callers can render the per-row outcome.
+ */
+export function useBulkCreateUsers() {
+  const qc = useQueryClient();
+  return useToastedMutation<BulkReport, Error, number[]>({
+    mutationFn: (osuIds: number[]) =>
+      restFetch<BulkReport>("/users/bulk", {
+        method: "POST",
+        body: JSON.stringify({ osu_ids: osuIds }),
+      }).then(throwOnRestError),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+}
+
 // =========================================================================
 // Admin — Beatmaps
 // =========================================================================
@@ -344,7 +418,6 @@ function buildBeatmapPayload(body: Record<string, unknown>): Record<string, unkn
   if (body.version !== undefined) payload.version = body.version;
   if (body.status !== undefined) payload.status = body.status;
   if (body.difficultyRating !== undefined) payload.difficulty_rating = body.difficultyRating;
-  if (body.modString !== undefined) payload.mod_string = body.modString;
   if (body.onlineID !== undefined) payload.id = Number(body.onlineID);
   return payload;
 }
@@ -357,10 +430,10 @@ function buildBeatmapPatch(body: Record<string, unknown>): Record<string, unknow
   return patch;
 }
 
-export function useBeatmaps(enabled = true, page = 1, perPage = 20) {
+export function useBeatmaps(enabled = true, page = 1, perPage = 20, search = "") {
   const { data, isLoading } = useGraphQLPaged(
-    ["admin", "beatmaps", page, perPage],
-    () => graphqlRequest(BeatmapsDocument, { page, perPage }),
+    ["admin", "beatmaps", page, perPage, search],
+    () => graphqlRequest(BeatmapsDocument, { page, perPage, search: search || undefined }),
     (data) => data.beatmaps,
     enabled,
   );
@@ -375,6 +448,29 @@ export function useBeatmaps(enabled = true, page = 1, perPage = 20) {
 
 /** Beatmap fetched by osu! id (from `BeatmapByOsuIdQuery`). */
 export type FetchedBeatmap = NonNullable<BeatmapByOsuIdQuery["beatmapByOsuId"]>;
+
+/**
+ * Search beatmaps by keyword or osu! id for autocomplete dropdowns. This is a
+ * pure read (backend `svc.List` hits Mongo directly — no fetch-through upsert),
+ * so it is safe to fire on every debounced keystroke.
+ */
+export function useBeatmapSearch(query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["search", "beatmaps", query],
+    queryFn: async () => {
+      const res = await graphqlRequest(BeatmapsDocument, {
+        search: query || undefined,
+        page: 1,
+        perPage: 20,
+      });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.beatmaps.items ?? [];
+    },
+    enabled: enabled && query.trim().length >= 1,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+}
 
 /**
  * Fetch beatmap metadata by osu! beatmap id. The backend resolver uses the
@@ -421,6 +517,218 @@ export function useDeleteBeatmap() {
     mutationFn: (id: string) =>
       restFetch(`/beatmaps/${id}`, { method: "DELETE" }).then(throwOnRestError),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
+  });
+}
+
+/**
+ * Bulk-add beatmaps by osu! beatmap id. Same semantics as `useBulkCreateUsers`.
+ */
+export function useBulkCreateBeatmaps() {
+  const qc = useQueryClient();
+  return useToastedMutation<BulkReport, Error, number[]>({
+    mutationFn: (osuIds: number[]) =>
+      restFetch<BulkReport>("/beatmaps/bulk", {
+        method: "POST",
+        body: JSON.stringify({ osu_ids: osuIds }),
+      }).then(throwOnRestError),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "beatmaps"] }),
+  });
+}
+
+// =========================================================================
+// Admin — Teams
+// =========================================================================
+
+/** Editable team form state shared by the create and edit modals. */
+export interface TeamForm {
+  name: string;
+  description: string;
+  seed: string;
+  leaderID: number | null;
+  strategistID: number | null;
+  playerIDs: number[];
+}
+
+/**
+ * Build the REST team payload. The form is always submitted wholesale: every
+ * field is sent so PATCH semantics ("omitted = unchanged") degrade to a full
+ * replace. `leader_id`/`strategist_id` are omitted when unset — the backend
+ * patch type does not support null-clearing.
+ */
+function buildTeamPayload(f: TeamForm): Record<string, unknown> {
+  const payload: Record<string, unknown> = { name: f.name };
+  payload.description = f.description;
+  payload.seed = f.seed;
+  if (f.leaderID != null) payload.leader_id = Number(f.leaderID);
+  if (f.strategistID != null) payload.strategist_id = Number(f.strategistID);
+  payload.players = f.playerIDs.map(Number);
+  return payload;
+}
+
+export function useTeams(enabled = true, page = 1, perPage = 20, search = "") {
+  const { data, isLoading } = useGraphQLPaged(
+    ["admin", "teams", page, perPage, search],
+    () => graphqlRequest(TeamsDocument, { page, perPage, search: search || undefined }),
+    (data) => data.teams,
+    enabled,
+  );
+  return {
+    data: data?.items ?? [],
+    pagination: data
+      ? { page: data.page, perPage: data.perPage, total: data.total, totalPages: data.totalPages }
+      : null,
+    isLoading,
+  };
+}
+
+export function useCreateTeam() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (body: TeamForm) =>
+      restFetch("/teams", { method: "POST", body: JSON.stringify(buildTeamPayload(body)) }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "teams"] }),
+  });
+}
+
+export function useUpdateTeam() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, ...body }: { id: string } & TeamForm) =>
+      restFetch(`/teams/${id}`, { method: "PATCH", body: JSON.stringify(buildTeamPayload(body)) }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "teams"] }),
+  });
+}
+
+export function useDeleteTeam() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (id: string) =>
+      restFetch(`/teams/${id}`, { method: "DELETE" }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "teams"] }),
+  });
+}
+
+// =========================================================================
+// Admin — Mappools
+// =========================================================================
+
+/**
+ * REST wire values for `domain.PieceMod`. The GraphQL enum uppercases
+ * everything (SHIRO) but the domain constant is mixed-case ("Shiro"), so
+ * REST submissions must be translated back.
+ */
+const REST_MOD_BY_ENUM: Record<string, string> = {
+  NM: "NM",
+  HD: "HD",
+  HR: "HR",
+  DT: "DT",
+  FM: "FM",
+  SHIRO: "Shiro",
+  TB: "TB",
+};
+
+/** Editable mappool entry in the admin form. `index` is derived on save. */
+export interface MappoolEntryForm {
+  mod: string; // GraphQL enum value (NM/HD/HR/DT/FM/SHIRO/TB)
+  beatmapID: number | null; // null for SHIRO slots
+  selectorID: number | null;
+  skill: string;
+}
+
+/** Editable mappool form state shared by the create and edit modals. */
+export interface MappoolForm {
+  name: string;
+  description: string;
+  entries: MappoolEntryForm[];
+}
+
+/**
+ * Build the REST mappool payload. Entry indexes are derived from the list
+ * order: entries are numbered 1..n per mod group following their appearance
+ * order, which keeps (mod, index) unique without asking the admin to manage
+ * indexes by hand.
+ */
+function buildMappoolPayload(f: MappoolForm): Record<string, unknown> {
+  const counters = new Map<string, number>();
+  const entries = f.entries.map((e) => {
+    const index = (counters.get(e.mod) ?? 0) + 1;
+    counters.set(e.mod, index);
+    const entry: Record<string, unknown> = {
+      mod: REST_MOD_BY_ENUM[e.mod] ?? e.mod,
+      index,
+    };
+    if (e.beatmapID != null) entry.beatmap_id = Number(e.beatmapID);
+    if (e.selectorID != null) entry.selector_id = Number(e.selectorID);
+    if (e.skill) entry.skill = e.skill;
+    return entry;
+  });
+  return { name: f.name, description: f.description, entries };
+}
+
+export function useMappools(enabled = true, page = 1, perPage = 20, search = "") {
+  const { data, isLoading } = useGraphQLPaged(
+    ["admin", "mappools", page, perPage, search],
+    () => graphqlRequest(MappoolsDocument, { page, perPage, search: search || undefined }),
+    (data) => data.mappools,
+    enabled,
+  );
+  return {
+    data: data?.items ?? [],
+    pagination: data
+      ? { page: data.page, perPage: data.perPage, total: data.total, totalPages: data.totalPages }
+      : null,
+    isLoading,
+  };
+}
+
+export function useCreateMappool() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (body: MappoolForm) =>
+      restFetch("/mappools", { method: "POST", body: JSON.stringify(buildMappoolPayload(body)) }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "mappools"] }),
+  });
+}
+
+export function useUpdateMappool() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, ...body }: { id: string } & MappoolForm) =>
+      restFetch(`/mappools/${id}`, { method: "PATCH", body: JSON.stringify(buildMappoolPayload(body)) }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "mappools"] }),
+  });
+}
+
+export function useDeleteMappool() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: (id: string) =>
+      restFetch(`/mappools/${id}`, { method: "DELETE" }).then(throwOnRestError),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "mappools"] }),
+  });
+}
+
+// =========================================================================
+// Admin — Users (add via osu! id)
+// =========================================================================
+
+/**
+ * Fetch a user by osu! user id through the 3-tier fetcher
+ * (Redis → Mongo → osu! API). A cache miss pulls the profile from the osu!
+ * API and upserts the document, so this doubles as the admin "add user"
+ * action (D4): the user list is invalidated to surface the new row.
+ */
+export function useFetchUserByOsuId() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: async (osuId: number): Promise<FetchedUser> => {
+      const res = await graphqlRequest(UserByOsuIdDocument, { osuId });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      const user = res.data?.userByOsuId;
+      if (!user) throw new Error("User not found");
+      return user;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 }
 
@@ -538,7 +846,6 @@ export function useRooms(
     ["rooms", filters, page, perPage],
     () =>
       graphqlRequest(RoomsDocument, {
-        type: filters.type ?? null,
         search: filters.search || null,
         round: filters.round || null,
         status: filters.status ?? null,
@@ -558,12 +865,43 @@ export function useRooms(
   };
 }
 
+/** Full room configuration for the pre-game setup page (M4). */
+export type RoomSetup = NonNullable<RoomByCodeQuery["roomByCode"]>;
+
+/**
+ * Full room by invite code. The pre-game setup page (M4) uses this instead of
+ * the list query because it needs the mappool, BP order and resolved member
+ * users. `enabled` mirrors the `useMatchByCode` convention (gated on login).
+ */
+export function useRoomByCode(code: string, enabled = true) {
+  const isClient = useIsClient();
+  return useQuery({
+    queryKey: ["room", code],
+    queryFn: () => graphqlRequest(RoomByCodeDocument, { code }).then((res) => unwrap(res)),
+    select: (res) => res.roomByCode,
+    enabled: isClient && enabled && code.length > 0,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
 /** Response of `POST /rooms` — the created room. */
 export interface CreatedRoom {
   id: string;
   code: string;
   name: string;
   type: string;
+}
+
+/**
+ * Invalidate both the room list (`["rooms"]`) and the setup page
+ * (`["room", code]` — prefix match) after a room mutation.
+ */
+function invalidateRoomQueries(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ["rooms"] });
+  void qc.invalidateQueries({ queryKey: ["room"] });
 }
 
 export function useCreateRoom() {
@@ -583,7 +921,7 @@ export function useUpdateRoomMetadata() {
   return useToastedMutation({
     mutationFn: ({ id, ...body }: RoomMetadataInput & { id: string }) =>
       rooms.updateMetadata(id, body).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+    onSuccess: () => invalidateRoomQueries(qc),
   });
 }
 
@@ -593,17 +931,76 @@ export function useSetRoomReferee() {
   return useToastedMutation({
     mutationFn: ({ id, refereeUserId }: { id: string; refereeUserId: number | null }) =>
       rooms.setReferee(id, refereeUserId).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+    onSuccess: () => invalidateRoomQueries(qc),
   });
 }
 
+/** Red/blue strategist assignment (PATCH /rooms/:id/strategists). */
+export function useSetRoomTeams() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, redTeamId, blueTeamId }: { id: string; redTeamId: string | null; blueTeamId: string | null }) =>
+      rooms.setTeams(id, { red_team_id: redTeamId, blue_team_id: blueTeamId }).then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Streamer assignment (PATCH /rooms/:id/streamer). */
+export function useSetRoomStreamer() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, streamerUserId }: { id: string; streamerUserId: number | null }) =>
+      rooms.setStreamer(id, { streamer_user_id: streamerUserId }).then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Pick/ban order (PATCH /rooms/:id/bp-order). */
+export function useSetRoomBpOrder() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({
+      id,
+      firstPick,
+      firstBan,
+    }: {
+      id: string;
+      firstPick: "red" | "blue";
+      firstBan: "red" | "blue";
+    }) =>
+      rooms.setBpOrder(id, { first_pick: firstPick, first_ban: firstBan }).then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Team rosters + leaders (PATCH /rooms/:id/players). */
 /** MP link update — admin or the designated referee of a match room. */
 export function useSetRoomMPLink() {
   const qc = useQueryClient();
   return useToastedMutation({
     mutationFn: ({ id, mpLink }: { id: string; mpLink: string }) =>
       rooms.setMpLink(id, { mp_link: mpLink }).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Stream link update (PATCH /rooms/:id/stream-link). */
+export function useSetRoomStreamLink() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, streamLink }: { id: string; streamLink: string }) =>
+      rooms.setStreamLink(id, { stream_link: streamLink }).then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+/** Replace the full pre-game mappool (PATCH /rooms/:id/mappool). */
+export function useSetRoomMappool() {
+  const qc = useQueryClient();
+  return useToastedMutation({
+    mutationFn: ({ id, mappoolId }: { id: string; mappoolId: string | null }) =>
+      rooms.setMappool(id, mappoolId).then(throwOnRestError),
+    onSuccess: () => invalidateRoomQueries(qc),
   });
 }
 
@@ -612,6 +1009,288 @@ export function useStartRoomMatch() {
   const qc = useQueryClient();
   return useToastedMutation({
     mutationFn: (id: string) => rooms.startMatch(id).then(throwOnRestError),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["rooms"] }),
+    onSuccess: () => invalidateRoomQueries(qc),
+  });
+}
+
+// =========================================================================
+// Match (board screen)
+// =========================================================================
+
+export type MatchByCodeResult = {
+  id: string;
+  code: string;
+  name: string;
+  roomType: string;
+  /** MongoDB ObjectID of the underlying room; needed for `markStrategistReady`. */
+  roomID: string;
+  /** Two-phase lifecycle status (PENDING/READY/ACTIVE/FINISHED/CANCELED). */
+  status: "PENDING" | "READY" | "ACTIVE" | "FINISHED" | "CANCELED";
+  /** Strategist readiness sub-doc (one-shot bits per side). */
+  strategistReadiness: {
+    redReady: boolean;
+    blueReady: boolean;
+  };
+  room:
+    | {
+        id: string;
+        name: string;
+        round: string;
+        settings: { mpLink: string | null };
+      }
+    | null;
+  pool: Array<{
+    poolSlotID: string;
+    metadataStatus: string;
+    beatmap: {
+      onlineID: string;
+      title: string;
+      artist: string;
+      difficultyName: string;
+      starRating: number;
+      bpm: number;
+      totalLength: number;
+      coverUrl: string;
+    } | null;
+  }>;
+  snapshot: {
+    version: string;
+    lifecycle: string;
+    phase: string;
+    turn: number;
+    activeTeam: string | null;
+    wonCounts: { red: number; blue: number };
+  };
+  /** Non-null when the current user is the strategist of this room. */
+  strategistView: MatchActorView | null;
+  /** Non-null when the current user is a team leader of this room. */
+  captainView: MatchActorView | null;
+  /** Non-null when the current user is the assigned referee (or admin). */
+  refereeView: MatchRefereeView | null;
+};
+
+export type MatchAuditActor = {
+  osuID: string;
+  capability: "STRATEGIST" | "CAPTAIN" | "REFEREE";
+  team: "RED" | "BLUE" | null;
+  adminOverride: boolean;
+  refereeOverride: boolean;
+};
+
+export type MatchAuditEntry = {
+  actionId: string;
+  sequence: string;
+  actor: MatchAuditActor;
+  commandType: string;
+  previousVersion: string;
+  resultingVersion: string;
+  timestamp: string;
+  reason: string | null;
+};
+
+export type MatchAutomationIssue = {
+  eventID: string;
+  sequence: string;
+  eventType: string;
+  attempts: number;
+  lastError: string;
+  occurredAt: string;
+};
+
+export type MatchRefereeView = {
+  matchID: string;
+  analysis: MatchActorAnalysis;
+  suspensionReason: string | null;
+  abortReason: string | null;
+  auditLog: MatchAuditEntry[];
+  automationIssues: MatchAutomationIssue[];
+};
+
+export type MatchIrcConnectionStatus = {
+  configured: boolean;
+  connected: boolean;
+  degraded: boolean;
+  lastError: string | null;
+};
+
+export type MatchIrcObservation = {
+  id: string;
+  channel: string;
+  sender: string;
+  command: string;
+  raw: string;
+  observedAt: string;
+  reviewStatus: "PENDING" | "CONFIRMING" | "CONFIRMED" | "REJECTED";
+  reviewReason: string | null;
+  suggestedResult: { winningTeam: "RED" | "BLUE"; boardPieceID: string } | null;
+};
+
+export type MatchIrcJob = {
+  id: string;
+  channel: string;
+  kind: string;
+  payload: string;
+  status:
+    | "PENDING"
+    | "SENDING"
+    | "SENT"
+    | "ACKNOWLEDGED"
+    | "FAILED"
+    | "CANCELLED";
+  attempts: number;
+  automaticRetry: boolean;
+  nextTryAt: string | null;
+  sentAt: string | null;
+  ackDeadline: string | null;
+  acknowledgedAt: string | null;
+  lastError: string | null;
+};
+
+export type MatchAction =
+  | "START_MATCH"
+  | "BAN_POOL_SLOT"
+  | "PLACE_PIECE"
+  | "PLACE_SHIRO"
+  | "ROB_PIECE"
+  | "CONFIRM_BEATMAP_RESULT"
+  | "GRANT_ADDITIONAL_TIME"
+  | "CALIBRATE_TIMER"
+  | "PAUSE_TIMER"
+  | "RESUME_TIMER"
+  | "SUSPEND_MATCH"
+  | "RESUME_MATCH"
+  | "SKIP_CURRENT_ACTION"
+  | "ABORT_MATCH"
+  | "REQUEST_TB"
+  | "RESPOND_TB_REQUEST"
+  | "START_TB"
+  | "CONFIRM_TB_RESULT"
+  | "RECORD_SURRENDER";
+
+export type MatchLegalPlacement = {
+  poolSlotID: string;
+  cell: string;
+  forceMod: "NM" | "HD" | "HR" | null;
+};
+
+export type MatchRobberyPlan = {
+  targetPieceID: string;
+  sacrificeSets: string[][];
+};
+
+export type MatchActorAnalysis = {
+  allowedActions: MatchAction[];
+  banPoolSlotIDs: string[];
+  legalPlacements: MatchLegalPlacement[];
+  shiroCells: string[];
+  robberyPlans: MatchRobberyPlan[];
+  pendingTBRequestID: string | null;
+  canAcceptTBRequest: boolean;
+  canRejectTBRequest: boolean;
+  tbRequestTeams: ("RED" | "BLUE")[];
+  tbResponseTeams: ("RED" | "BLUE")[];
+};
+
+export type MatchActorView = {
+  isMyTurn?: boolean;
+  myTeam: "RED" | "BLUE";
+  analysis: MatchActorAnalysis;
+};
+
+/**
+ * Board screen bootstrap: resolves a formal match by room code (the match
+ * code mirrors the room code) and returns identity, pool metadata and an
+ * initial snapshot for first paint. The WS channel takes over live updates.
+ *
+ * Field-level errors (e.g. a non-strategist user requesting `strategistView`)
+ * are tolerated: GraphQL partial success returns the match data *alongside*
+ * field-level errors, and the page renders each view as nullable so the
+ * affected panels simply stay empty. We only throw when no match data came
+ * back — that's the genuinely fatal case (unknown room code, transport
+ * failure, auth header missing).
+ */
+export function useMatchByCode(code: string, enabled = true) {
+  return useQuery({
+    queryKey: ["match", code],
+    queryFn: async () => {
+      const res = await graphqlRequest(MatchByCodeDocument, { code });
+      if (!res.data?.matchByCode) {
+        if (res.errors?.length) {
+          throw new Error(res.errors[0].message);
+        }
+        return null;
+      }
+      if (res.errors?.length) {
+        for (const err of res.errors) {
+          console.warn(
+            "[matchByCode] field-level error",
+            err.path?.join(".") ?? "",
+            err.message,
+          );
+        }
+      }
+      return res.data.matchByCode;
+    },
+    enabled: enabled && Boolean(code),
+    retry: 1,
+  });
+}
+
+/**
+ * IRC connection status for the referee console (M3). Polled — the IRC
+ * gateway state changes from the outside (bot connect/disconnect).
+ */
+export function useIrcConnectionStatus(matchId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["match", matchId, "irc", "status"],
+    queryFn: async () => {
+      const res = await graphqlRequest(IrcConnectionStatusDocument, { matchId });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.ircConnectionStatus ?? null;
+    },
+    enabled: enabled && Boolean(matchId),
+    refetchInterval: 15_000,
+    retry: 1,
+  });
+}
+
+/**
+ * IRC result observations (M3). Pending observations need a timely surface,
+ * so the poll is faster. `channel` is derived from the room MP link; without
+ * it the query is disabled (the backend requires a channel argument).
+ */
+export function useIrcObservations(
+  matchId: string,
+  channel: string | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["match", matchId, "irc", "observations", channel],
+    queryFn: async () => {
+      const res = await graphqlRequest(IrcObservationsDocument, {
+        matchId,
+        channel: channel ?? "",
+      });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.ircObservations ?? [];
+    },
+    enabled: enabled && Boolean(matchId) && Boolean(channel),
+    refetchInterval: 10_000,
+    retry: 1,
+  });
+}
+
+/** IRC send jobs for the referee console (M3); polled for failed-job retries. */
+export function useIrcJobs(matchId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["match", matchId, "irc", "jobs"],
+    queryFn: async () => {
+      const res = await graphqlRequest(IrcJobsDocument, { matchId });
+      if (res.errors?.length) throw new Error(res.errors[0].message);
+      return res.data?.ircJobs ?? [];
+    },
+    enabled: enabled && Boolean(matchId),
+    refetchInterval: 15_000,
+    retry: 1,
   });
 }

@@ -15,13 +15,19 @@ import {
   Spinner,
   Surface,
   Table,
+  TextField,
+  Input,
 } from "@heroui/react";
-import { Pencil } from "lucide-react";
+import { Pencil, Search, UserPlus, Layers } from "lucide-react";
 import {
+  useBulkCreateUsers,
+  useFetchUserByOsuId,
   useSetUserBanned,
   useUpdateUserRoles,
   useUpdateVerifyStatus,
   useUsers,
+  useUserSearch,
+  type FetchedUser,
   type UserItem,
 } from "@/app/lib/hooks";
 import VerifyBadge from "@/app/components/VerifyBadge";
@@ -29,6 +35,7 @@ import RoleBadge from "@/app/components/RoleBadge";
 import PaginationBar from "./PaginationBar";
 import EmptyTableState from "./EmptyTableState";
 import SearchBar from "./SearchBar";
+import BulkAddDialog from "./BulkAddDialog";
 import { AvailableRoles, AvailableVerifyStatuses } from "@/app/lib/model";
 
 const PER_PAGE = 10;
@@ -44,6 +51,14 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
   const [editRoles, setEditRoles] = useState<string[]>([]);
   const [editVerifyStatus, setEditVerifyStatus] = useState("UNVERIFIED");
   const [banningUserId, setBanningUserId] = useState<string | null>(null);
+
+  // ---- Add user (two-step modal, mirrors the beatmap fetch flow) ----
+  const [addModal, setAddModal] = useState(false);
+  const [addOsuId, setAddOsuId] = useState(0);
+  const [fetchedUser, setFetchedUser] = useState<FetchedUser | null>(null);
+
+  // ---- Bulk add user ----
+  const [bulkModal, setBulkModal] = useState(false);
 
   const perPage = search ? SEARCH_PER_PAGE : PER_PAGE;
 
@@ -64,6 +79,8 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
   const updateRoles = useUpdateUserRoles();
   const setBanned = useSetUserBanned();
   const setVerify = useUpdateVerifyStatus();
+  const fetchUser = useFetchUserByOsuId();
+  const bulkCreate = useBulkCreateUsers();
 
   const userById = (id: string) => users.find((u) => u.id === id);
 
@@ -72,6 +89,22 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
     setEditUserId(id);
     setEditRoles([...(target?.roles ?? [])]);
     setEditVerifyStatus(target?.verifyStatus ?? "");
+  };
+
+  const openAddUser = () => {
+    setAddOsuId(0);
+    setFetchedUser(null);
+    setAddModal(true);
+  };
+
+  // Pull the profile from the backend by osu! id. The backend fetcher
+  // (Redis → Mongo → osu! API) upserts the user document on a cache miss,
+  // so a success already means the user is stored and visible in the list.
+  const fetchUserInfo = () => {
+    if (!addOsuId) return;
+    fetchUser.mutate(addOsuId, {
+      onSuccess: (u) => setFetchedUser(u),
+    });
   };
 
   const saveUser = () => {
@@ -130,6 +163,16 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
           }}
           onClear={() => setSearch("")}
         />
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onPress={() => setBulkModal(true)}>
+            <Layers className="w-4 h-4"/>
+            批量添加
+          </Button>
+          <Button variant="primary" size="sm" onPress={openAddUser}>
+            <UserPlus className="w-4 h-4"/>
+            添加用户
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -302,6 +345,122 @@ export default function UsersPanel({ enabled }: { enabled: boolean }) {
           </Modal.Container>
         </Modal.Backdrop>
       </Modal>
+
+      {/* ---- Add user modal (two-step: osu id → fetch → confirm) ---- */}
+      <Modal
+        isOpen={addModal}
+        onOpenChange={(o) => {
+          if (!o) setAddModal(false);
+        }}
+      >
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog>
+              <Modal.Header>
+                <Modal.Icon className="bg-default text-foreground">
+                  <UserPlus className="size-5"/>
+                </Modal.Icon>
+                <Modal.Heading>添加用户</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body>
+                <div className="flex flex-col gap-5">
+                  {/* ---- Part 1: 使用ID获取 ---- */}
+                  <section className="flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold">使用ID获取</h3>
+                    <div className="flex items-end gap-2">
+                      <TextField className="flex-1" variant="secondary">
+                        <Label>osu! 用户 ID</Label>
+                        <Input
+                          type="number"
+                          value={String(addOsuId)}
+                          onChange={(e) =>
+                            setAddOsuId(Number((e.target as HTMLInputElement).value))
+                          }
+                        />
+                      </TextField>
+                      <Button
+                        variant="secondary"
+                        onPress={fetchUserInfo}
+                        isDisabled={fetchUser.isPending || !addOsuId}
+                      >
+                        <Search className="w-4 h-4"/>
+                        {fetchUser.isPending ? "获取中..." : "获取"}
+                      </Button>
+                    </div>
+                  </section>
+
+                  {/* ---- Part 2: 确认用户信息 ---- */}
+                  <section className="flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold">确认用户信息</h3>
+                    {fetchedUser ? (
+                      <Surface
+                        variant="secondary"
+                        className="flex items-center gap-4 rounded-2xl p-4"
+                      >
+                        <Avatar size="lg">
+                          <Avatar.Image src={fetchedUser.avatarUrl} alt=""/>
+                          <Avatar.Fallback>
+                            {fetchedUser.username.slice(0, 2).toUpperCase()}
+                          </Avatar.Fallback>
+                        </Avatar>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {fetchedUser.username}
+                            </span>
+                            <Chip size="sm" variant="soft">
+                              {fetchedUser.countryCode}
+                            </Chip>
+                          </div>
+                          <div className="text-xs text-muted-foreground font-mono">
+                            #{fetchedUser.onlineID}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            全球排名 #{fetchedUser.globalRank} · {fetchedUser.pp}pp
+                          </div>
+                        </div>
+                      </Surface>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        输入 osu! 用户 ID 并获取 —
+                        未入库的用户会自动从 osu! API 拉取资料并保存。
+                      </p>
+                    )}
+                  </section>
+                </div>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="ghost" onPress={() => setAddModal(false)}>
+                  关闭
+                </Button>
+                <Button
+                  variant="primary"
+                  onPress={() => setAddModal(false)}
+                  isDisabled={!fetchedUser}
+                >
+                  完成
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
+
+      {/* ---- Bulk add users modal ---- */}
+      <BulkAddDialog
+        open={bulkModal}
+        onClose={() => setBulkModal(false)}
+        kind="用户"
+        idLabel="osu! 用户 ID"
+        pending={bulkCreate.isPending}
+        onSubmit={(ids) => bulkCreate.mutateAsync(ids)}
+        lookup={{
+          placeholder: "搜索用户名或 ID",
+          useSearch: useUserSearch,
+          getItemId: (u) => Number(u.onlineID),
+          getItemLabel: (u) => `${u.username} (#${u.onlineID})`,
+        }}
+      />
     </>
   );
 }

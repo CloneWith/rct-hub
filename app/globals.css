@@ -307,10 +307,73 @@ body {
   .animate-win-flash,
   .animate-floaty,
   .animate-fade-up,
+  .rcth-anim-pop,
+  .rcth-anim-win,
+  .rcth-anim-rob,
+  .rcth-flash-in,
+  .rcth-fade-out,
+  .piece-breathing,
   .reveal {
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* 棋房：等待结果的棋子呼吸光圈 */
+@keyframes piece-breath {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.0); }
+  50% { box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.45); }
+}
+
+.piece-breathing {
+  animation: piece-breath 1.6s ease-in-out infinite;
+}
+
+/* ---------- 棋房 / Overlay 共用：领域事件动画（roadmap §3.7） ---------- */
+/* 落子弹入 */
+@keyframes rcth-pop {
+  0%   { transform: scale(0.2); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.rcth-anim-pop { animation: rcth-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* 四连获胜脉冲 */
+@keyframes rcth-win-pulse {
+  0%   { transform: scale(1); filter: brightness(1); }
+  50%  { transform: scale(1.15); filter: brightness(1.5); }
+  100% { transform: scale(1); filter: brightness(1.15); }
+}
+.rcth-anim-win { animation: rcth-win-pulse 0.8s ease-in-out both; }
+
+/* 夺棋翻转闪光 */
+@keyframes rcth-rob-flash {
+  0%   { transform: scale(1); filter: hue-rotate(0deg); }
+  50%  { transform: scale(0.85) rotate(-8deg); filter: hue-rotate(160deg) brightness(1.6); }
+  100% { transform: scale(1); filter: hue-rotate(0deg); }
+}
+.rcth-anim-rob { animation: rcth-rob-flash 0.8s ease-in-out both; }
+
+/* 胜负横幅：进入 + 淡出 */
+@keyframes rcth-flash-in {
+  0%   { opacity: 0; transform: scale(0.92); }
+  30%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes rcth-banner-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.rcth-flash-in { animation: rcth-flash-in 0.4s ease-out both; }
+.rcth-fade-out { animation: rcth-banner-out 0.6s ease-in 5.4s both; }
+
+/* Overlay 直播页（/overlay/[code]）：透明背景 + 隐藏全局导航，仅该路由生效 */
+html.rcth-overlay body {
+  background: transparent !important;
+}
+html.rcth-overlay nav,
+html.rcth-overlay footer {
+  display: none !important;
 }

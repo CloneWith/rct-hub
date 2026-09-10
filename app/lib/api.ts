@@ -84,6 +84,29 @@ export interface RestResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  /**
+   * Field-level validation failures returned by the backend for
+   * `ValidationError`s (e.g. start-match missing requirements). Shape:
+   * `[{ field, rule, message }]`.
+   */
+  details?: Array<{ field: string; rule?: string; message?: string }>;
+}
+
+/** Per-ID outcome of a bulk add request. */
+export interface BulkResult {
+  osu_id: number;
+  ok: boolean;
+  id?: string;
+  detail?: string;
+  error?: string;
+}
+
+/** Aggregate response for bulk user/beatmap add requests. */
+export interface BulkReport {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: BulkResult[];
 }
 
 export async function restFetch<T>(
@@ -131,8 +154,8 @@ export const rooms = {
   create: (body: Record<string, unknown>) =>
     restFetch("/rooms", { method: "POST", body: JSON.stringify(body) }),
 
-  setStrategists: (id: string, body: Record<string, unknown>) =>
-    restFetch(`/rooms/${id}/strategists`, { method: "PATCH", body: JSON.stringify(body) }),
+  setTeams: (id: string, body: Record<string, unknown>) =>
+    restFetch(`/rooms/${id}/teams`, { method: "PATCH", body: JSON.stringify(body) }),
 
   setStreamer: (id: string, body: Record<string, unknown>) =>
     restFetch(`/rooms/${id}/streamer`, { method: "PATCH", body: JSON.stringify(body) }),
@@ -140,14 +163,20 @@ export const rooms = {
   setBpOrder: (id: string, body: Record<string, unknown>) =>
     restFetch(`/rooms/${id}/bp-order`, { method: "PATCH", body: JSON.stringify(body) }),
 
-  setPlayers: (id: string, body: Record<string, unknown>) =>
-    restFetch(`/rooms/${id}/players`, { method: "PATCH", body: JSON.stringify(body) }),
-
   setMpLink: (id: string, body: Record<string, unknown>) =>
     restFetch(`/rooms/${id}/mp-link`, { method: "PATCH", body: JSON.stringify(body) }),
 
   setStreamLink: (id: string, body: Record<string, unknown>) =>
     restFetch(`/rooms/${id}/stream-link`, { method: "PATCH", body: JSON.stringify(body) }),
+
+  /**
+   * Link a managed mappool entity to the room.
+   */
+  setMappool: (id: string, mappoolId: string | null) =>
+    restFetch(`/rooms/${id}/mappool`, {
+      method: "PATCH",
+      body: JSON.stringify({ mappool_id: mappoolId }),
+    }),
 
   startMatch: (id: string) =>
     restFetch(`/rooms/${id}/start-match`, { method: "POST" }),
@@ -185,14 +214,6 @@ export interface RoomMetadataInput {
   refereeUserId?: number;
   /** osu! online id */
   streamerUserId?: number;
-  /** osu! online id */
-  redLeader?: number;
-  /** osu! online id */
-  blueLeader?: number;
-  /** osu! online ids */
-  redPlayers?: number[];
-  /** osu! online ids */
-  bluePlayers?: number[];
 }
 
 function buildRoomMetadataPayload(body: RoomMetadataInput): Record<string, unknown> {
@@ -202,10 +223,6 @@ function buildRoomMetadataPayload(body: RoomMetadataInput): Record<string, unkno
   if (body.scheduledAt !== undefined) payload.scheduled_at = body.scheduledAt;
   if (body.refereeUserId !== undefined) payload.referee_user_id = body.refereeUserId;
   if (body.streamerUserId !== undefined) payload.streamer_user_id = body.streamerUserId;
-  if (body.redLeader !== undefined) payload.red_leader = body.redLeader;
-  if (body.blueLeader !== undefined) payload.blue_leader = body.blueLeader;
-  if (body.redPlayers !== undefined) payload.red_players = body.redPlayers;
-  if (body.bluePlayers !== undefined) payload.blue_players = body.bluePlayers;
   return payload;
 }
 
@@ -216,6 +233,12 @@ function buildRoomMetadataPayload(body: RoomMetadataInput): Record<string, unkno
 export const adminBeatmaps = {
   create: (body: Record<string, unknown>) =>
     restFetch("/beatmaps", { method: "POST", body: JSON.stringify(body) }),
+
+  bulkCreate: (osuIds: number[]) =>
+    restFetch<BulkReport>("/beatmaps/bulk", {
+      method: "POST",
+      body: JSON.stringify({ osu_ids: osuIds }),
+    }),
 
   update: (id: string, body: Record<string, unknown>) =>
     restFetch(`/beatmaps/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
@@ -229,6 +252,12 @@ export const adminBeatmaps = {
 // ---------------------------------------------------------------------------
 
 export const adminUsers = {
+  bulkCreate: (osuIds: number[]) =>
+    restFetch<BulkReport>("/users/bulk", {
+      method: "POST",
+      body: JSON.stringify({ osu_ids: osuIds }),
+    }),
+
   updateRoles: (id: string, body: Record<string, unknown>) =>
     restFetch(`/users/${id}/roles`, { method: "PATCH", body: JSON.stringify(body) }),
 

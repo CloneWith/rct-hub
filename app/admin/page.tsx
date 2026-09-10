@@ -5,15 +5,19 @@ import { useRouter } from "next/navigation";
 import { Button, Tabs, Spinner } from "@heroui/react";
 import {
   ArrowLeft,
+  ListMusic,
   Megaphone,
   Music,
   Shield,
   ShieldQuestion,
+  Trophy,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import UsersPanel from "./components/UsersPanel";
 import BeatmapsPanel from "./components/BeatmapsPanel";
+import TeamsPanel from "./components/TeamsPanel";
+import MappoolsPanel from "./components/MappoolsPanel";
 import AnnouncementsPanel from "./components/AnnouncementsPanel";
 
 export default function AdminPage() {
@@ -81,6 +85,16 @@ export default function AdminPage() {
               谱面
               <Tabs.Indicator/>
             </Tabs.Tab>
+            <Tabs.Tab id="teams">
+              <Trophy className="w-4 h-4 inline mr-1.5"/>
+              队伍
+              <Tabs.Indicator/>
+            </Tabs.Tab>
+            <Tabs.Tab id="mappools">
+              <ListMusic className="w-4 h-4 inline mr-1.5"/>
+              图池
+              <Tabs.Indicator/>
+            </Tabs.Tab>
             <Tabs.Tab id="announcements">
               <Megaphone className="w-4 h-4 inline mr-1.5"/>
               公告
@@ -94,6 +108,12 @@ export default function AdminPage() {
         </Tabs.Panel>
         <Tabs.Panel id="beatmaps">
           <BeatmapsPanel enabled={activeTab === "beatmaps"}/>
+        </Tabs.Panel>
+        <Tabs.Panel id="teams">
+          <TeamsPanel enabled={activeTab === "teams"}/>
+        </Tabs.Panel>
+        <Tabs.Panel id="mappools">
+          <MappoolsPanel enabled={activeTab === "mappools"}/>
         </Tabs.Panel>
         <Tabs.Panel id="announcements">
           <AnnouncementsPanel enabled={activeTab === "announcements"}/>

@@ -14,9 +14,11 @@ import {
   Table,
   TextField,
 } from "@heroui/react";
-import { ExternalLink, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Search, Trash2, Layers } from "lucide-react";
 import {
   useBeatmaps,
+  useBeatmapSearch,
+  useBulkCreateBeatmaps,
   useCreateBeatmap,
   useDeleteBeatmap,
   useFetchBeatmapByOsuId,
@@ -26,8 +28,8 @@ import {
 import PaginationBar from "./PaginationBar";
 import EmptyTableState from "./EmptyTableState";
 import SearchBar from "./SearchBar";
+import BulkAddDialog from "./BulkAddDialog";
 
-const MOD_OPTIONS = ["NM", "HD", "HR", "DT", "FM", "TB"];
 const STATUS_OPTIONS = ["ranked", "loved", "qualified", "graveyard"];
 const PER_PAGE = 10;
 const SEARCH_PER_PAGE = 200;
@@ -39,7 +41,6 @@ const blankBm = {
   version: "",
   difficultyRating: 0,
   status: "ranked",
-  modString: "NM",
 };
 
 type BmForm = typeof blankBm;
@@ -62,6 +63,8 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
     title: string;
   } | null>(null);
 
+  const [bulkModal, setBulkModal] = useState(false);
+
   const perPage = search ? SEARCH_PER_PAGE : PER_PAGE;
 
   const {
@@ -83,6 +86,7 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
   const updateBm = useUpdateBeatmap();
   const deleteBm = useDeleteBeatmap();
   const fetchBm = useFetchBeatmapByOsuId();
+  const bulkCreate = useBulkCreateBeatmaps();
 
   const openBmCreate = () => {
     setBmEditId(null);
@@ -100,7 +104,6 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
       version: b.version,
       difficultyRating: b.difficultyRating,
       status: b.status,
-      modString: b.modString,
     });
     setBmFetched(true);
     setBmModal(true);
@@ -121,9 +124,6 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
           version: b.version ?? "",
           difficultyRating: b.difficultyRating ?? 0,
           status: STATUS_OPTIONS.includes(b.status) ? b.status : p.status,
-          modString: MOD_OPTIONS.includes(b.modString)
-            ? b.modString
-            : p.modString || "NM",
         }));
         setBmEditId(b.id);
         setBmFetched(true);
@@ -164,10 +164,16 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
           }}
           onClear={() => setSearch("")}
         />
-        <Button variant="primary" size="sm" onPress={openBmCreate}>
-          <Plus className="w-4 h-4"/>
-          新谱面
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onPress={() => setBulkModal(true)}>
+            <Layers className="w-4 h-4"/>
+            批量添加
+          </Button>
+          <Button variant="primary" size="sm" onPress={openBmCreate}>
+            <Plus className="w-4 h-4"/>
+            新谱面
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -204,7 +210,7 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
                       </Table.Cell>
                       <Table.Cell>
                         <Chip size="sm" variant="soft" color="accent">
-                          {b.modString}
+                          谱面
                         </Chip>
                       </Table.Cell>
                       <Table.Cell>
@@ -376,27 +382,6 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
                         </TextField>
                         <Select
                           variant="secondary"
-                          value={bmF.modString}
-                          onChange={(v) =>
-                            setBmF((p) => ({...p, modString: v as string}))
-                          }
-                        >
-                          <Label>图池分类</Label>
-                          <Select.Trigger>
-                            <Select.Value/>
-                          </Select.Trigger>
-                          <Select.Popover>
-                            <ListBox>
-                              {MOD_OPTIONS.map((m) => (
-                                <ListBox.Item key={m} id={m}>
-                                  {m}
-                                </ListBox.Item>
-                              ))}
-                            </ListBox>
-                          </Select.Popover>
-                        </Select>
-                        <Select
-                          variant="secondary"
                           value={bmF.status}
                           onChange={(v) =>
                             setBmF((p) => ({...p, status: v as string}))
@@ -486,6 +471,22 @@ export default function BeatmapsPanel({ enabled }: { enabled: boolean }) {
           </AlertDialog.Container>
         </AlertDialog.Backdrop>
       </AlertDialog>
+
+      {/* ---- Bulk add beatmaps modal ---- */}
+      <BulkAddDialog
+        open={bulkModal}
+        onClose={() => setBulkModal(false)}
+        kind="谱面"
+        idLabel="osu! 谱面 ID"
+        pending={bulkCreate.isPending}
+        onSubmit={(ids) => bulkCreate.mutateAsync(ids)}
+        lookup={{
+          placeholder: "搜索谱面标题、艺术家或 ID",
+          useSearch: useBeatmapSearch,
+          getItemId: (b) => Number(b.onlineID),
+          getItemLabel: (b) => `${b.title} — ${b.artist} (#${b.onlineID})`,
+        }}
+      />
     </>
   );
 }

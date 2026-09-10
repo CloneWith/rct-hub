@@ -97,19 +97,17 @@ type Room {
 }
 
 type RoomSettings {
-  redStrategistUserID: ID
-  redStrategist: User @goField(forceResolver: true)
-  blueStrategistUserID: ID
-  blueStrategist: User @goField(forceResolver: true)
   streamerUserID: ID
   streamer: User @goField(forceResolver: true)
-  mappool: Mappool!
+  # 实体引用（D1）：队伍与图池由管理后台维护，房间仅持有 ID
+  redTeamID: ObjectID
+  blueTeamID: ObjectID
+  mappoolID: ObjectID
+  redTeam: Team @goField(forceResolver: true)
+  blueTeam: Team @goField(forceResolver: true)
+  mappool: Mappool @goField(forceResolver: true)
   firstPick: TeamSide
   firstBan: TeamSide
-  redPlayers: [ID!]!
-  bluePlayers: [ID!]!
-  redLeader: ID
-  blueLeader: ID
   mpLink: String
   streamLink: String
 }
@@ -122,6 +120,14 @@ type Match {
   roomID: ID!               # 内部关联
   room: Room @goField(forceResolver: true)
   pool: [MatchPoolSlotMetadata!]!
+
+  # 比赛状态。两阶段开赛:
+  #   PENDING  → 等待双方策略师点击"准备"
+  #   READY    → 两边策略师已确认;正式比赛等待裁判确认开赛
+  #   ACTIVE   → 已开赛
+  #   FINISHED / CANCELED → 终局
+  status: MatchStatus! @goField(forceResolver: true)
+  strategistReadiness: StrategistReadiness! @goField(forceResolver: true)
 
   # 客户端专属视图 (Phase 2 — Read Model §9.10)
   # 视图字段需要 forceResolver，因为计算逻辑需要重新获取 domain.Match
@@ -136,6 +142,17 @@ type Match {
   # 正式比赛唯一权威赛况。
   snapshot: MatchSnapshot!
 }
+
+# 两阶段开赛中策略师"准备"状态的持久化结果。该值一旦置位即不可撤回，
+# 是策略师在 UI 上点击"准备"按钮的纸面痕迹。`redReady` / `blueReady`
+# 都为 true 时比赛进入 READY 状态，由后端决定是否触发系统自动开赛
+# (casual / private) 或等待裁判确认 (match)。
+type StrategistReadiness {
+  redReady: Boolean!
+  blueReady: Boolean!
+}
+
+enum MatchStatus { PENDING READY ACTIVE FINISHED CANCELED }
 
 type MatchPoolSlotMetadata {
   poolSlotID: ID!
@@ -319,7 +336,9 @@ type Position {
   col: Int!   # domain: X
 }
 
-type Mappool {
+# 运行时图池视图：内嵌图池按 mod 分组的槽位展示（match 视图 / overlay / 房间配置）。
+# 与 Mappool 实体区分：本类型是引擎运行时结构，不落库。
+type Pool {
   slots: [PoolSlotGroup!]!
 }
 
@@ -358,15 +377,6 @@ type Beatmap {
   approachRate: Float!
   overallDifficulty: Float!
   coverURL: String!
-  modString: String!
-  modIndex: Int!
-  selectorID: ID                # domain: SelectorID int64 (谱面选择者)
-  selector: User @goField(forceResolver: true)
-  creditUserIDs: [ID!]!         # domain: CreditUserIDs []int64 (贡献者)
-  credits: [User!]! @goField(forceResolver: true)
-  skill: String
-  comment: String
-  isOriginal: Boolean!
   createdAt: Time!
   updatedAt: Time!
 }
@@ -382,6 +392,46 @@ type Announcement {
   publishedAt: Time
   createdAt: Time!
   updatedAt: Time!
+}
+
+# =============================================================================
+# 队伍 / 图池实体（管理后台维护，房间通过 ID 引用 —— D1/D2）
+# =============================================================================
+
+type Team {
+  id: ObjectID!
+  name: String!
+  description: String
+  seed: String
+  leaderID: Int              # osu! user ID
+  leader: User @goField(forceResolver: true)
+  strategistID: Int           # osu! user ID
+  strategist: User @goField(forceResolver: true)
+  playerIDs: [Int!]!         # osu! user IDs
+  players: [User!]! @goField(forceResolver: true)
+  isReady: Boolean!          # 队长 + 策略师齐备（被房间引用的门槛，R1）
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+# Mappool 实体：可独立维护的图池，条目内嵌于文档（全量替换语义，R2）。
+type Mappool {
+  id: ObjectID!
+  name: String!
+  description: String
+  entries: [MappoolEntry!]!  # 按 mod 分组、index 升序返回
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type MappoolEntry {
+  mod: PieceMod!
+  index: Int!                # 组内 1-based 序号
+  beatmapID: Int             # osu! beatmap ID，SHIRO 槽为 null
+  beatmap: Beatmap @goField(forceResolver: true)
+  selectorID: Int            # osu! user ID（选图者）
+  selector: User @goField(forceResolver: true)
+  skill: String
 }
 
 # =============================================================================
@@ -497,6 +547,22 @@ type AnnouncementPage {
   totalPages: Int!
 }
 
+type TeamPage {
+  items: [Team!]!
+  page: Int!
+  perPage: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+type MappoolPage {
+  items: [Mappool!]!
+  page: Int!
+  perPage: Int!
+  total: Int!
+  totalPages: Int!
+}
+
 # =============================================================================
 # Query
 # =============================================================================
@@ -521,15 +587,24 @@ type Query {
   # 谱面
   beatmap(id: ID!): Beatmap
   beatmapByOsuId(osuId: Int!): Beatmap
-  beatmaps(page: Int = 1, perPage: Int = 20): BeatmapPage!
+  beatmaps(search: String, page: Int = 1, perPage: Int = 20): BeatmapPage!
 
   # 用户
   user(id: ID!): User
-  users(page: Int = 1, perPage: Int = 20): UserPage!
+  users(search: String, page: Int = 1, perPage: Int = 20): UserPage!
 
   # 公告
   announcements(page: Int = 1, perPage: Int = 20): AnnouncementPage!
   announcement(id: ID!): Announcement
+
+  # 队伍 / 图池实体（admin 门控；详见 mutation 一节）
+  teams(search: String, page: Int = 1, perPage: Int = 20): TeamPage!
+  mappools(search: String, page: Int = 1, perPage: Int = 20): MappoolPage!
+
+  # 按 osu! ID 拉取用户（admin；读穿 upsert —— 不存在时从 osu! API 创建，
+  # 默认 player + pending，与 OAuth 首登一致，D4）
+  userByOsuId(osuId: Int!): User!
+
   ircObservations(matchId: ID!, channel: String!): [IRCObservation!]!
   ircJobs(matchId: ID!): [IRCJob!]!
   ircConnectionStatus(matchId: ID!): IRCConnectionStatus!
@@ -551,6 +626,35 @@ input RetryIRCJobInput { matchID: ID!, jobID: ID! }
 input RetryMatchAutomationInput { matchID: ID!, eventID: ID! }
 input RetryBeatmapMetadataInput { matchID: ID!, beatmapID: ID! }
 input ConfirmIRCResultInput { matchId: ID!, expectedVersion: UInt64!, commandId: String!, observationId: ID!, boardPieceId: ID!, winningTeam: TeamSide! }
+
+# =============================================================================
+# 队伍 / 图池管理输入（admin）
+# GraphQL 省略与显式 null 均视为"不提供"：nullable 输入字段无法清空为 null
+# （与 REST PATCH 语义一致）；列表字段为全量替换。
+# =============================================================================
+
+input TeamInput {
+  name: String!
+  description: String
+  seed: String
+  leaderID: Int
+  strategistID: Int
+  playerIDs: [Int!]!        # 全量替换
+}
+
+input MappoolEntryInput {
+  mod: PieceMod!
+  index: Int!
+  beatmapID: Int             # SHIRO 条目省略
+  selectorID: Int
+  skill: String
+}
+
+input MappoolInput {
+  name: String!
+  description: String
+  entries: [MappoolEntryInput!]!  # 全量替换（R2）
+}
 
 # =============================================================================
 # Authoritative formal-match commands
@@ -668,6 +772,10 @@ type MatchCommandResult {
 }
 
 type Mutation {
+  # 第二阶段开赛流程：调用方必须是房间对应队伍的策略师。系统会原子地
+  # 翻转该侧的 readiness 位；当双方都按下后，非正式比赛房间会由系统
+  # 自动触发 START_MATCH，正式比赛则进入 READY 等待裁判确认。
+  markStrategistReady(roomId: ID!): Match!
   startMatch(input: CommandMeta!): MatchCommandResult!
   confirmIRCResult(input: ConfirmIRCResultInput!): MatchCommandResult!
   rejectIRCObservation(matchId: ID!, observationId: ID!, reason: String!): Boolean!
@@ -698,4 +806,12 @@ type Mutation {
   startTb(input: ReasonCommandInput!): MatchCommandResult!
   confirmTbResult(input: ConfirmTbResultInput!): MatchCommandResult!
   recordSurrender(input: RecordSurrenderInput!): MatchCommandResult!
+
+  # --- 队伍 / 图池管理（admin 门控）---
+  createTeam(input: TeamInput!): Team!
+  updateTeam(id: ID!, input: TeamInput!): Team!
+  deleteTeam(id: ID!): Boolean!
+  createMappool(input: MappoolInput!): Mappool!
+  updateMappool(id: ID!, input: MappoolInput!): Mappool!
+  deleteMappool(id: ID!): Boolean!
 }
